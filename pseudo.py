@@ -83,6 +83,10 @@ def anaconda(dom):
     waitclick(dom, 'anaconda_storage_btn')
     waitclick(dom, 'anaconda_continue')
     waitclick(dom, 'anaconda_dialog_continue')
+
+    waitclick(dom, 'anaconda_software_selection_btn')
+    waitclick(dom, 'anaconda_xfce_choice')
+    waitclick(dom, 'anaconda_done_btn')
     waitclick(dom, 'anaconda_begin_btn')
     waitclick(dom, 'anaconda_bluekey_img')
     wait(dom, 'anaconda_done_btn')
@@ -102,11 +106,36 @@ def anaconda(dom):
         logging.debug('.')
         time.sleep(1)
 
+    print dom.is_running()
+    time.sleep(1)
     logging.debug('Starting again')
+    print dom.is_running()
     dom.start()
+    import IPython
+    IPython.embed()
+
+def write(dom, text):
+    for letter in text:
+        dom.send_key(letter)
+
+def firstboot(dom):
+    waitclick(dom, 'firstboot_forward_btn')
+    waitclick(dom, 'firstboot_forward_btn') # license
+    wait(dom, 'firsboot_create_user_label')
+    write(dom, 'pllm framework')
+    dom.send_key('tab')
+    write(dom, 'pllm')
+    dom.send_key('tab')
+    dom.send_key('tab')
+    write(dom, 'a')
+    dom.send_key('tab')
+    write(dom, 'a')
+    waitclick(dom, 'firstboot_forward_btn')
+    waitclick(dom, 'firstboot_finish_btn')
 
 def f18(dom):
     expect(dom, [
         ('grub', 'grub_autoboot_label', grub),
-        ('anaconda', 'anaconda_installation_label', anaconda)
+        ('anaconda', 'anaconda_installation_label', anaconda),
+        ('firstboot', 'firstboot_welcome_label', firstboot),
         ])
