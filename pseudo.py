@@ -3,8 +3,31 @@ import logging
 
 from pllm import process, config, util
 
+
+class findcached(object):
+    def __init__(self, func):
+        self.func = func
+        self.last_screen_id = -1
+        self.cache = {}
+
+    def __call__(self, dom, template):
+        dom.screen_lock.acquire()
+        if self.last_screen_id != dom.screen_id:
+            self.cache = {}
+            self.last_screen_id = dom.screen_id
+
+        if template in self.cache:
+            res = self.cache[template]
+        else:
+            res = self.func(dom, template)
+            self.cache[template] = res
+
+        dom.screen_lock.release()
+        return res
+
+@findcached
 def find(dom, template):
-    dom.screen_lock.acquire()
+    #dom.screen_lock.acquire()
 
     res, x, y = process.match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
@@ -14,11 +37,12 @@ def find(dom, template):
         logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
 
-    dom.screen_lock.release()
+    #dom.screen_lock.release()
     return ret
 
+@findcached
 def findxy(dom, template):
-    dom.screen_lock.acquire()
+    #dom.screen_lock.acquire()
     res, x, y = process.match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
         logging.debug('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
@@ -26,7 +50,7 @@ def findxy(dom, template):
     else:
         logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
-    dom.screen_lock.release()
+    #dom.screen_lock.release()
 
     return (ret, x, y)
 
@@ -111,8 +135,6 @@ def anaconda(dom):
     logging.debug('Starting again')
     print dom.is_running()
     dom.start()
-    import IPython
-    IPython.embed()
 
 def write(dom, text):
     for letter in text:
@@ -120,8 +142,9 @@ def write(dom, text):
 
 def firstboot(dom):
     waitclick(dom, 'firstboot_forward_btn')
+    waitclick(dom, 'firstboot_forward_btn') # glitch
     waitclick(dom, 'firstboot_forward_btn') # license
-    wait(dom, 'firsboot_create_user_label')
+    wait(dom, 'firstboot_create_user_label')
     write(dom, 'pllm framework')
     dom.send_key('tab')
     write(dom, 'pllm')

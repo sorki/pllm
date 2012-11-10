@@ -80,7 +80,7 @@ def main():
     c = 0
     import threading
     class ScreenThread(threading.Thread):
-        def __init__(self, dom, interval=1000):
+        def __init__(self, dom, interval=3000):
             super(ScreenThread, self).__init__()
             self.dom = dom
             self.target = config.get('screenshot_target')
@@ -93,11 +93,11 @@ def main():
                     return
 
                 dom.screen_lock.acquire()
+                dom.screen_id += 1
                 dom.screen = dom.cv_image()
                 cv.ShowImage('master', dom.screen)
                 cv.SaveImage('{0}/{1}.png'.format(self.target, dom.screen_id),
                     dom.screen)
-                dom.screen_id += 1
                 dom.screen_lock.release()
                 cv.WaitKey(self.interval)
 
@@ -120,7 +120,7 @@ def main():
         while True:
             logging.debug('f18')
             pseudo.f18(dom)
-            time.sleep(2)
+            time.sleep(.2)
     except KeyboardInterrupt:
         pass
     #cv.SetMouseCallback('master', mousecb, shot)
