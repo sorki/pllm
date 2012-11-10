@@ -3,15 +3,23 @@ import logging
 
 from pllm import process, config, util
 
+class screenlock(object):
+    def __init__(self, func):
+        self.func = func
 
-class findcached(object):
+    def __call__(self, dom, template):
+        dom.screen_lock.acquire()
+        res = self.func(dom, template)
+        dom.screen_lock.release()
+        return res
+
+class cachefind(object):
     def __init__(self, func):
         self.func = func
         self.last_screen_id = -1
         self.cache = {}
 
     def __call__(self, dom, template):
-        dom.screen_lock.acquire()
         if self.last_screen_id != dom.screen_id:
             self.cache = {}
             self.last_screen_id = dom.screen_id
@@ -22,13 +30,11 @@ class findcached(object):
             res = self.func(dom, template)
             self.cache[template] = res
 
-        dom.screen_lock.release()
         return res
 
-@findcached
+@screenlock
+@cachefind
 def find(dom, template):
-    #dom.screen_lock.acquire()
-
     res, x, y = process.match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
         logging.debug('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
@@ -37,12 +43,11 @@ def find(dom, template):
         logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
 
-    #dom.screen_lock.release()
     return ret
 
-@findcached
+@screenlock
+@cachefind
 def findxy(dom, template):
-    #dom.screen_lock.acquire()
     res, x, y = process.match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
         logging.debug('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
@@ -50,7 +55,6 @@ def findxy(dom, template):
     else:
         logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
-    #dom.screen_lock.release()
 
     return (ret, x, y)
 
