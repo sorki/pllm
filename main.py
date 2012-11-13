@@ -2,12 +2,9 @@
 
 import time
 import logging
-from pllm import backends, process, config
-
-TRESHOLD = 0.8
+from pllm import backends, config
 
 def main():
-    # load cfg
     logging.basicConfig(level=logging.DEBUG)
 
     # init libvirt connection
@@ -23,19 +20,8 @@ def main():
     dom.start()
     time.sleep(.5)
 
-    print dom.send_cmd('info mice')
-
-    def click(dom):
-        lv.send_cmd(dom, 'mouse_button 1')
-        time.sleep(.01)
-        lv.send_cmd(dom, 'mouse_button 0')
-
-    def move(dom, x, y):
-        lv.send_cmd(dom, 'mouse_move %d %d' % (x, y))
-
     import cv
     cv.NamedWindow('master')
-    cx, cy = -1,-1
 
     def mousecb(event, x, y, flags, img):
         if event == cv.CV_EVENT_LBUTTONDOWN:
@@ -43,41 +29,6 @@ def main():
             logging.debug('Size ({0},{1})'.format(img.width, img.height))
             dom.click(x, y, img.width, img.height)
 
-    class automata(object):
-        def __init__(self, dom, stage = 'boot'):
-            self.dom = dom
-            self.stage = stage
-
-        def test_grub(self, image):
-            res, x, y = process.match(image, cv.LoadImage('img/grub_autoboot_label.png'))
-            if res >= TRESHOLD:
-                self.stage = 'grub'
-
-        def test_anaconda(self, image):
-            res, x, y = process.match(image, cv.LoadImage('img/anaconda_welcome.png'))
-            if res >= TRESHOLD:
-                # minor bug preventing correct first click
-                dom.click(0,0)
-                self.stage = 'anaconda'
-
-        def run(self, image):
-            logging.debug('Current stage: {0}'.format(self.stage))
-            if self.stage == 'boot':
-                self.test_grub(image)
-
-            if self.stage == 'grub':
-                self.dom.send_key('ret')
-                self.test_anaconda(image)
-
-            if self.stage == 'anaconda':
-                res, x, y = process.match(image,
-                    cv.LoadImage('img/anaconda_eng_lang.png'))
-                if res >= TRESHOLD:
-                    self.dom.click(x,y)
-
-    #wat = automata(dom)
-
-    c = 0
     import threading
     class ScreenThread(threading.Thread):
         def __init__(self, dom, interval=3000):
@@ -86,6 +37,21 @@ def main():
             self.target = config.get('screenshot_target')
             self.interval = interval
             self.running = False
+
+            self.distinct = True
+
+        def compare(self, im1, im2):
+            if type(im1) != type(im2):
+                return False
+
+            if im1.width != im2.width or im1.height != im2.height:
+                return False
+
+            dst = cv.CreateImage((im1.width, im2.height), cv.IPL_DEPTH_8U, 1)
+            #cv.Zero(dst)
+            cv.Cmp(im1, im2, dst, cv.CV_CMP_NE)
+            logging.debug('WAT {0}'.format(cv.CountNonZero(dst)))
+            return dst
 
         def run(self):
             while True:
@@ -126,9 +92,6 @@ def main():
     #cv.SetMouseCallback('master', mousecb, shot)
 
     sct.stop()
-
-    # create VM
-    # init monitoring
 
 if __name__ == "__main__":
     main()
