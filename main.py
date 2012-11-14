@@ -5,12 +5,13 @@ import logging
 from pllm import backends, config
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.ERROR)
 
     # init libvirt connection
-    lv = backends.LibvirtBackend('qemu:///system')
+    lv = backends.LibvirtBackend('qemu:///system', 'vg')
 
-    with open('data/f18.xml') as f:
+    with open('data/f18_vnc.xml') as f:
         xml = f.read()
 
     lv.remove_test_vm('f18')
@@ -78,8 +79,20 @@ def main():
     sct.start()
     time.sleep(1)
 
-    #import IPython
-    #IPython.embed()
+    import bdb
+    class Fuhacko(bdb.Bdb):
+        def user_line(self, frame):
+            #import IPython
+            #IPython.embed()
+            if frame.f_code.co_filename == '<string>':
+                print frame.f_lineno
+
+    b = Fuhacko()
+
+    with open('pseudo.py') as f:
+        code = f.read()
+        b.run(code, dict(dom=dom))
+    '''
     import pseudo
 
     try:
@@ -89,6 +102,7 @@ def main():
             time.sleep(.2)
     except KeyboardInterrupt:
         pass
+    '''
     #cv.SetMouseCallback('master', mousecb, shot)
 
     sct.stop()

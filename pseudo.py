@@ -113,8 +113,9 @@ def anaconda(dom):
     waitclick(dom, 'anaconda_dialog_continue')
 
     waitclick(dom, 'anaconda_software_selection_btn')
-    waitclick(dom, 'anaconda_xfce_choice')
+    #waitclick(dom, 'anaconda_xfce_choice')
     waitclick(dom, 'anaconda_done_btn')
+
     waitclick(dom, 'anaconda_begin_btn')
     waitclick(dom, 'anaconda_bluekey_img')
     wait(dom, 'anaconda_done_btn')
@@ -166,3 +167,11 @@ def f18(dom):
         ('anaconda', 'anaconda_installation_label', anaconda),
         ('firstboot', 'firstboot_welcome_label', firstboot),
         ])
+
+try:
+    while True:
+        logging.debug('f18')
+        f18(dom)
+        time.sleep(.2)
+except KeyboardInterrupt:
+    pass
