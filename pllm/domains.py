@@ -16,7 +16,7 @@ class Domain(object):
         self.dom = dom
         self.screen = None
         self.screen_id = 0
-        self.screen_lock = threading.Lock()
+        self.screen_lock = threading.RLock()
 
     def start(self):
         raise NotImplemented
