@@ -2,7 +2,7 @@
 
 import time
 import logging
-from pllm import backends, config
+from pllm import backends, config, fuhacko
 
 def main():
     #logging.basicConfig(level=logging.DEBUG)
@@ -79,15 +79,7 @@ def main():
     sct.start()
     time.sleep(1)
 
-    import bdb
-    class Fuhacko(bdb.Bdb):
-        def user_line(self, frame):
-            #import IPython
-            #IPython.embed()
-            if frame.f_code.co_filename == '<string>':
-                print frame.f_lineno
-
-    b = Fuhacko()
+    b = fuhacko.Fuhacko()
 
     with open('pseudo.py') as f:
         code = f.read()
