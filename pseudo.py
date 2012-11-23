@@ -8,9 +8,8 @@ class screenlock(object):
         self.func = func
 
     def __call__(self, dom, template):
-        dom.screen_lock.acquire()
-        res = self.func(dom, template)
-        dom.screen_lock.release()
+        with dom.screen_lock:
+            res = self.func(dom, template)
         return res
 
 class cachefind(object):

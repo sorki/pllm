@@ -59,13 +59,13 @@ def main():
                 if not self.running:
                     return
 
-                dom.screen_lock.acquire()
-                dom.screen_id += 1
-                dom.screen = dom.cv_image()
-                cv.ShowImage('master', dom.screen)
-                cv.SaveImage('{0}/{1}.png'.format(self.target, dom.screen_id),
-                    dom.screen)
-                dom.screen_lock.release()
+                with dom.screen_lock:
+                    dom.screen_id += 1
+                    dom.screen = dom.cv_image()
+                    cv.ShowImage('master', dom.screen)
+                    cv.SaveImage('{0}/{1}.png'.format(self.target,
+                        dom.screen_id), dom.screen)
+
                 cv.WaitKey(self.interval)
 
         def start(self):
