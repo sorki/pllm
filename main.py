@@ -41,6 +41,9 @@ def main():
 
             self.distinct = True
 
+        # compare doesn't work, idea was to use it to compare
+        # subsequent screenshots and save space and processing time
+        # if they are similar
         def compare(self, im1, im2):
             if type(im1) != type(im2):
                 return False
