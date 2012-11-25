@@ -21,6 +21,13 @@ class Domain(object):
     def start(self):
         raise NotImplemented
 
+    def stop(self):
+        raise NotImplemented
+
+    def restart(self):
+        self.stop()
+        self.start()
+
     def cv_image(self):
         raise NotImplemented
 
