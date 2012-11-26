@@ -19,17 +19,17 @@ class Domain(object):
         self.screen_lock = threading.RLock()
 
     def start(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def stop(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def restart(self):
         self.stop()
         self.start()
 
     def cv_image(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def screenshot(self):
         with self.screen_lock:
@@ -37,10 +37,10 @@ class Domain(object):
             self.screen = self.cv_image()
 
     def click(self, x, y):
-        raise NotImplemented
+        raise NotImplementedError
 
     def send_key(self, key):
-        raise NotImplemented
+        raise NotImplementedError
 
 class LibvirtDomain(Domain):
     def send_cmd(self, cmd):
