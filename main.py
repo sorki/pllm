@@ -82,23 +82,11 @@ def main():
     sct.start()
     time.sleep(1)
 
-    b = fuhacko.Fuhacko()
+    fuh = fuhacko.Fuhacko(dom)
 
     with open('pseudo.py') as f:
         code = f.read()
-        b.run(code, dict(dom=dom))
-    '''
-    import pseudo
-
-    try:
-        while True:
-            logging.debug('f18')
-            pseudo.f18(dom)
-            time.sleep(.2)
-    except KeyboardInterrupt:
-        pass
-    '''
-    #cv.SetMouseCallback('master', mousecb, shot)
+        fuh.start(code)
 
     sct.stop()
 
