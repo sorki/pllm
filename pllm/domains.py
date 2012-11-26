@@ -31,6 +31,11 @@ class Domain(object):
     def cv_image(self):
         raise NotImplemented
 
+    def screenshot(self):
+        with self.screen_lock:
+            self.screen_id += 1
+            self.screen = self.cv_image()
+
     def click(self, x, y):
         raise NotImplemented
 
