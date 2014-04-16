@@ -5,18 +5,18 @@ import logging
 from pllm import backends, config, fuhacko
 
 def main():
-    #logging.basicConfig(level=logging.DEBUG)
-    logging.basicConfig(level=logging.ERROR)
+    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.ERROR)
 
     # init libvirt connection
-    lv = backends.LibvirtBackend('qemu:///system', 'vg')
+    lv = backends.LibvirtBackend('qemu:///system', 'lvm')
 
-    with open('data/f18_vnc.xml') as f:
+    with open('data/f20.xml') as f:
         xml = f.read()
 
-    lv.remove_test_vm('f18')
-    dom = lv.create_test_vm(xml, 'f18',
-        '/var/lib/libvirt/images/Fedora-18-Beta-TC4-x86_64-DVD.iso')
+    lv.remove_test_vm('f20')
+    dom = lv.create_test_vm(xml, 'f20',
+        '/var/lib/libvirt/images/Fedora-20-x86_64-netinst.iso')
 
     dom.start()
     time.sleep(.5)

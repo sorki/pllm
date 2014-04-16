@@ -1,18 +1,20 @@
 import os
+import random
 import logging
 
 import libvirt
-import virtinst
 from lxml import etree
 
 import util
 import domains
+
 
 def handler(ctxt, err):
     global errno
     errno = err
 
 libvirt.registerErrorHandler(handler, 'pllm')
+
 
 # taken from virtinst/_util.py (python-virtinst), GPLv2+
 def fetch_all_guests(conn):
@@ -44,32 +46,54 @@ def fetch_all_guests(conn):
 
     return (active, inactive)
 
+
+def random_mac():
+    return ':'.join(
+        ['{:0>2x}'.format(x) for x in
+            [0x52, 0x54, 0x00,
+             random.randint(0x00, 0xff),
+             random.randint(0x00, 0xff),
+             random.randint(0x00, 0xff)]
+         ])
+
+
+def get_xpath(xml, xpath):
+    tree = etree.fromstring(xml)
+    return tree.xpath(xpath)[0]
+
+
 class LibvirtBackend(object):
     def __init__(self, libvirt_target=None, storage_pool='default'):
         self.con = libvirt.open(libvirt_target)
         self.pool = self.con.storagePoolLookupByName(storage_pool)
-        self.pool_path = virtinst.util.get_xml_path(self.pool.XMLDesc(0),
-            '/pool/target/path/text()')
 
-        self.pool_type = virtinst.util.get_xml_path(self.pool.XMLDesc(0),
-            '/pool/@type')
+        self.pool_path = get_xpath(self.pool.XMLDesc(0),
+                                   '/pool/target/path/text()')
 
-    def create_volume(self, name, typ, size):
-        ptypes = virtinst.Storage.StoragePool.get_pool_types()
-        if typ not in ptypes:
-            raise RuntimeError(
-                'Unknown pool type: {0}, available: {1}'.format(typ,
-                ', '.join(ptypes)))
+        self.pool_type = get_xpath(self.pool.XMLDesc(0),
+                                   '/pool/@type')
 
-        pool_type = virtinst.Storage.StoragePool.get_pool_class(typ)
-        vol_type = pool_type.get_volume_class()
+    def create_volume(self, name, typ, size, path):
 
-        logging.debug('Using volume type: {0}'.format(vol_type))
+        root = etree.Element('volume')
+        name_tag = etree.Element('name')
+        name_tag.text = name
+        root.append(name_tag)
 
-        volume = vol_type(name, pool=self.pool,
-            capacity=size, allocation=size, conn=self.con)
+        for tag in ['capacity', 'allocation']:
+            size_tag = etree.Element(tag)
+            size_tag.text = str(size)
+            size_tag.attrib['unit'] = 'bytes'
+            root.append(size_tag)
 
-        return volume
+        target_tag = etree.Element('target')
+        path_tag = etree.Element('path')
+        path_tag.text = path
+        target_tag.append(path_tag)
+        root.append(target_tag)
+
+        vol = self.pool.createXML(etree.tostring(root))
+        return vol
 
     def volume_path(self, name):
         return os.path.join(self.pool_path, name)
@@ -81,15 +105,14 @@ class LibvirtBackend(object):
         try:
             vol = self.con.storageVolLookupByPath(volpath)
             logging.debug('Existing volume found')
-        except libvirt.libvirtError as e:
+        except libvirt.libvirtError:
             logging.debug('Existing volume not found')
 
         def recreate(vol):
             if vol:
                 vol.delete(0)
 
-            nvol = self.create_volume(name, typ, size)
-            nvol.install()
+            self.create_volume(name, typ, size, volpath)
 
         if vol:
             orig_typ, cap, alloc = vol.info()
@@ -168,7 +191,7 @@ class LibvirtBackend(object):
                         source.attrib['dev'].split('_')[1].replace('G', ''))
                     logging.debug('Custom volume size: {0}'.format(gigs))
 
-                size = gigs * 1024**3
+                size = gigs * 1024 ** 3
 
                 volname = self.gen_volume_name(ident)
                 path = self.get_volume(volname, self.pool_type, size)
@@ -186,15 +209,15 @@ class LibvirtBackend(object):
         used_macs = util.get_host_macs()
 
         active, inactive = fetch_all_guests(self.con)
-        for domain in active+inactive:
+        for domain in active + inactive:
             used_macs.append(
-                virtinst.util.get_xml_path(domain.XMLDesc(0),
-                    '/domain/devices/interface/mac/@address'))
+                get_xpath(domain.XMLDesc(0),
+                          '/domain/devices/interface/mac/@address'))
 
         macs = tree.xpath('/domain/devices/interface/mac')
         for mac in macs:
             while True:
-                new_mac = virtinst.util.randomMAC(type='qemu').lower()
+                new_mac = random_mac()
                 if new_mac not in used_macs:
                     mac.attrib['address'] = new_mac
                     logging.debug('Setting mac address to {0}'.format(new_mac))

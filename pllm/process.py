@@ -1,6 +1,10 @@
 import cv
+import logging
 
 def match(_original, template, scale_template=1):
+    if _original is None:
+        logging.error('Image received is None')
+        return 0
 
     original = cv.CloneImage(_original)
 
@@ -22,7 +26,8 @@ def match(_original, template, scale_template=1):
 
     if maxval >= .7:
         cv.Rectangle(original, maxloc,
-            (maxloc[0] + scaled_template.width, maxloc[1] + scaled_template.height),
+            (maxloc[0] + scaled_template.width,
+             maxloc[1] + scaled_template.height),
             cv.RGB(255, 0, 0), 2, 8, 0)
 
     #cv.ShowImage('proc', original)

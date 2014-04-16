@@ -10,10 +10,7 @@ import libvirt_qemu
 import util
 
 class Domain(object):
-    def __init__(self, con, ident, dom):
-        self.con = con
-        self.ident = ident
-        self.dom = dom
+    def __init__(self):
         self.screen = None
         self.screen_id = 0
         self.screen_lock = threading.RLock()
@@ -28,13 +25,24 @@ class Domain(object):
         self.stop()
         self.start()
 
+    def send_keys(self, keys):
+        for key in keys:
+            self.send_key(key)
+            #time.sleep(1)
+
     def cv_image(self):
+        ''' iplimage '''
         raise NotImplementedError
 
     def screenshot(self):
         with self.screen_lock:
+            cvim = None
+            while cvim is None:
+                time.sleep(0.1)
+                cvim = self.cv_image()
+
             self.screen_id += 1
-            self.screen = self.cv_image()
+            self.screen = cvim
 
     def click(self, x, y):
         raise NotImplementedError
@@ -43,6 +51,12 @@ class Domain(object):
         raise NotImplementedError
 
 class LibvirtDomain(Domain):
+    def __init__(self, con, ident, dom):
+        super(LibvirtDomain, self).__init__()
+        self.con = con
+        self.ident = ident
+        self.dom = dom
+
     def send_cmd(self, cmd):
         logging.debug('Sending qemu monitor command {0}'.format(cmd))
         # handle reconnects!
