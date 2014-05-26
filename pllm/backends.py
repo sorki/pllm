@@ -225,4 +225,4 @@ class LibvirtBackend(object):
 
         newxml = etree.tostring(tree)
         lvdom = self.con.defineXML(newxml)
-        return domains.LibvirtDomain(self.con, ident, lvdom)
+        return domains.LibvirtDomain(ident, lvdom)

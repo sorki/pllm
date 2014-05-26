@@ -6,11 +6,13 @@ import libvirt
 
 import config
 
+
 def get_host_macs():
     with os.popen('LC_ALL=C /sbin/ip addr') as f:
         return map(lambda x: x.split()[1],
-                filter(lambda x: 'link/ether' in x,
-                    f.readlines()))
+                   filter(lambda x: 'link/ether' in x,
+                   f.readlines()))
+
 
 def destroy_libvirt_domain(domain):
     domain_state = domain.info()[0]
@@ -24,5 +26,7 @@ def destroy_libvirt_domain(domain):
     else:
         logging.debug('Domain not running')
 
+
 def load_img(name):
-    return cv.LoadImage('{0}/{1}.png'.format(config.CONFIG['img_dir'], name))
+    return cv.LoadImage('{0}/{1}.png'.format(
+                        config.CONFIG['template_dir'], name))

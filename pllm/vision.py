@@ -1,0 +1,123 @@
+import os
+import cv
+import cv2
+import tesseract
+
+
+def ocr(fpath, block=True):
+    """
+    Recognize text in image specified by `fpath`.
+    Should contain single block of text (pre-segmented)
+    """
+
+    api = tesseract.TessBaseAPI()
+    api.Init(".", "eng", tesseract.OEM_DEFAULT)
+    if block:
+        api.SetPageSegMode(tesseract.PSM_SINGLE_BLOCK)
+    else:
+        api.SetPageSegMode(tesseract.PSM_AUTO)
+
+    img = cv.LoadImage(fpath, iscolor=False)
+    tesseract.SetCvImage(img, api)
+    text = api.GetUTF8Text()
+    return text
+
+
+def ocr_optimize(fpath, upscale=5, threshold=160):
+    """
+    Optimize `fpath` image for ocr
+    """
+
+    fdir, fname = os.path.split(fpath)
+    name = fname[:fname.rfind('.')]  # ext is .png
+
+    img = cv2.imread(fpath)
+    img = cv2.resize(img, None, fx=upscale, fy=upscale,
+                     interpolation=cv2.INTER_CUBIC)
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.blur(img, (4, 4))
+    ret, thr = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
+
+    # adaptive
+    #thr = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+    #                            cv2.THRESH_BINARY, 11, 2)
+    optname = "{0}/{1}_ocropt.png".format(fdir, name)
+
+    cv2.imwrite(optname, thr)
+    return optname
+
+
+def segmentize(fpath):
+    """
+    Read `fpath` image, find its segments
+    and store as separate images.
+    """
+
+    fdir, fname = os.path.split(fpath)
+    name = fname[:fname.rfind('.')]  # ext is .png
+
+    img = cv2.imread(fpath)
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    vis = img.copy()
+
+    delta = 3
+    min_area = 500
+    max_area = 35000
+    max_variation = 0.25
+    min_diversity = 0.50
+
+    mser = cv2.MSER(delta, min_area, max_area, max_variation,
+                    min_diversity)
+
+    regions = mser.detect(gray, None)
+
+    hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+
+    # visualize what mser found
+    cv2.polylines(vis, hulls, 1, (0, 255, 0))
+    cv2.imwrite("{0}/{1}_mser.png".format(fdir, name), vis)
+
+    vis = img.copy()
+    segs = {}
+
+    # save found segments
+    for s in hulls:
+        x, y, w, h = cv2.boundingRect(s)
+        roi = gray[y:y + h, x:x + w]
+        segname = "{0}/{1}_segment_{2}_{3}.png".format(fdir, name, x, y)
+        cv2.imwrite(segname, roi)
+        opt = ocr_optimize(segname)
+        segs[opt] = (x, y, w, h)
+
+    return segs
+
+
+def process(fpath):
+    opt_fpath = ocr_optimize(fpath)
+
+    full = ocr(opt_fpath, block=False)
+
+    segs = segmentize(fpath)
+    segs_res = {}
+
+    for segname, shape in segs.items():
+        x, y, w, h = shape
+        seg_ocr = ocr(segname)
+        if seg_ocr:
+            segs_res[segname] = (shape, seg_ocr)
+
+    return (full, segs_res)
+
+if __name__ == "__main__":
+    full, segs_res = process("/tmp/pllm/test/welcome.png")
+    #full, segs_res = process("/tmp/pllm/test/dialog.png")
+    #full, segs_res = process("/tmp/pllm/run/1.png")
+    full, segs_res = process("/tmp/pllm/run/current.png")
+
+    print("Full: {0}".format(full))
+    for segname, (shape, txt) in segs_res.items():
+        x, y, w, h = shape
+        print("{0}x{1}".format(x, y))
+        print(txt)

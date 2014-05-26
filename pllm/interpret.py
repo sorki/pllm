@@ -1,6 +1,6 @@
 import bdb
 
-class Fuhacko(bdb.Bdb):
+class Interpret(bdb.Bdb):
     def __init__(self, domain, line_callback=lambda x: x):
         bdb.Bdb.__init__(self)
         self.domain = domain
