@@ -1,5 +1,7 @@
 #!/usr/bin/python
 import os
+import logging
+
 from twisted.python import log
 from twisted.application import service
 from twisted.application.internet import TCPClient
@@ -7,7 +9,7 @@ from twisted.internet import task
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
 
-from pllm import manhole
+from pllm import manhole, interpret
 from pllm import backends, config
 
 from pllm.vnc.vnc import VNCFactory
@@ -33,6 +35,7 @@ class Pllm(object):
         super(Pllm, self).__init__()
 
         self.vnc = None
+        self.int = None
         self.dom = None
         self.manhole = None
         self.app = application
@@ -66,6 +69,12 @@ class Pllm(object):
                 self.start_manhole()
             else:
                 self.state = 'MAIN'
+
+        if self.state == 'MAIN':
+            if not self.int:
+                self.start_interpret()
+            else:
+                self.state = 'RUNNING'
 
         reactor.callLater(1, self.main)
 
@@ -144,8 +153,17 @@ class Pllm(object):
         self.schedule_save(proto, 0)
         #reactor.callLater(1, l2.start, 5)
 
+    @trace
+    def start_interpret(self):
+        with open('next_pseudo.py') as f:
+            code = f.read()
+
+        self.int = interpret.Interpret(self.dom)
+        reactor.callInThread(self.int.start, code)
+
 
 application = service.Application("PLLM")
 app = Pllm(application)
 # yield so logging and twistd stuff can be initialized
+logging.basicConfig(level=logging.DEBUG)
 reactor.callLater(0.1, app.main)

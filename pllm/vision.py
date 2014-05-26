@@ -1,4 +1,7 @@
 import os
+import logging
+
+
 import cv
 import cv2
 import tesseract
@@ -110,11 +113,56 @@ def process(fpath):
 
     return (full, segs_res)
 
+
+def template_match(target, template):
+    h, w, d = template.shape
+
+    res = cv2.matchTemplate(target, template, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    return max_val, max_loc[0] + w / 2, max_loc[1] + h / 2
+
+
+def template_match_paths(target_fpath, template_fpath,
+                         scale_template=1, threshold=0.5):
+
+    target = cv2.imread(target_fpath)
+    template = cv2.imread(template_fpath)
+    h, w, d = template.shape
+
+    fdir, fname = os.path.split(target_fpath)
+    name = fname[:fname.rfind('.')]  # ext is .png
+
+    max_val, x, y = template_match(target, template)
+
+    if scale_template != 1:
+        template = cv2.resize(template, None,
+                              fx=scale_template,
+                              fy=scale_template,
+                              interpolation=cv2.INTER_CUBIC)
+
+    if max_val >= threshold:
+        logging.debug("Template matched, max_val: {0:.2}".format(max_val))
+
+        cv2.rectangle(target, (x - w / 2, y - h / 2), (x + w / 2, y + h / 2),
+                      (255, 0, 0), 2)
+
+        cv2.imwrite("{0}/{1}_template_match.png".format(fdir, name), target)
+
+    return (max_val, x, y)
+
+
 if __name__ == "__main__":
+    res = template_match_paths("/tmp/pllm/run/last.png",
+                               "../img/anaconda_done_btn.png")
+
+    print res
+    import sys
+    sys.exit(0)
+
     full, segs_res = process("/tmp/pllm/test/welcome.png")
     #full, segs_res = process("/tmp/pllm/test/dialog.png")
     #full, segs_res = process("/tmp/pllm/run/1.png")
-    full, segs_res = process("/tmp/pllm/run/current.png")
+    full, segs_res = process("/tmp/pllm/run/last.png")
 
     print("Full: {0}".format(full))
     for segname, (shape, txt) in segs_res.items():

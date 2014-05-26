@@ -1,7 +1,7 @@
 import os
 import logging
 
-import cv
+import cv2
 import libvirt
 
 import config
@@ -17,9 +17,9 @@ def get_host_macs():
 def destroy_libvirt_domain(domain):
     domain_state = domain.info()[0]
     if domain_state in [
-        libvirt.VIR_DOMAIN_RUNNING,
-        libvirt.VIR_DOMAIN_PAUSED,
-        libvirt.VIR_DOMAIN_PMSUSPENDED]:
+            libvirt.VIR_DOMAIN_RUNNING,
+            libvirt.VIR_DOMAIN_PAUSED,
+            libvirt.VIR_DOMAIN_PMSUSPENDED]:
 
         logging.debug('Destroying domain')
         domain.destroy()
@@ -28,5 +28,5 @@ def destroy_libvirt_domain(domain):
 
 
 def load_img(name):
-    return cv.LoadImage('{0}/{1}.png'.format(
-                        config.CONFIG['template_dir'], name))
+    return cv2.imread('{0}/{1}.png'.format(
+                      config.CONFIG['template_dir'], name))
