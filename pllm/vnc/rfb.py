@@ -11,6 +11,7 @@ http://www.realvnc.com/docs/rfbproto.pdf
       - stripped version
       - cleaned up, removed pyDes dep and password auth support
       - added PSEUDOENC_ (mainly DESKTOP_SIZE is important for resizing support)
+      - python3 compat
 
 MIT License
 """
@@ -44,6 +45,7 @@ PSEUDOENC_CONTINUOUS_UPDATES = -313
 class RFBClient(Protocol):
 
     def __init__(self):
+        self.debug = False
         self._packet = []
         self._packet_len = 0
         self._handler = self._handleInitial
@@ -58,10 +60,12 @@ class RFBClient(Protocol):
         if '\n' in buffer:
             if buffer[:3] == 'RFB':
                 #~ print "rfb"
-                maj, min = [int(x) for x in buffer[3:-1].split('.')]
-                #~ print maj, min
-                if (maj, min) not in [(3, 3), (3, 7), (3, 8), (3, 889), (4, 0)]:
-                    log.msg("wrong protocol version, %s.%s\n", maj, min)
+                major, minor = [int(x) for x in buffer[3:-1].split('.')]
+                if (major, minor) not in [(3, 3), (3, 7),
+                                          (3, 8), (3, 889), (4, 0)]:
+
+                    log.msg("wrong protocol version, {0}.{1}\n"
+                            .format(major, minor))
                     self.transport.loseConnection()
             buffer = buffer[12:]
             self.transport.write('RFB 003.003\n')
@@ -84,14 +88,14 @@ class RFBClient(Protocol):
         elif auth == 2:
             self.expect(self._handleVNCAuth, 16)
         else:
-            log.msg("unknown auth response (%d)" % auth)
+            log.msg("unknown auth response ({0})".format(auth))
 
     def _handleConnFailed(self, block):
         (waitfor,) = unpack("!I", block)
         self.expect(self._handleConnMessage, waitfor)
 
     def _handleConnMessage(self, block):
-        log.msg("Connection refused: %r" % block)
+        log.msg("Connection refused: {0}".format(block))
 
     def _handleVNCAuth(self, block):
         self._challenge = block
@@ -111,7 +115,7 @@ class RFBClient(Protocol):
             self.vncAuthFailed("too many tries to log in")
             self.transport.loseConnection()
         else:
-            log.msg("unknown auth response (%d)" % result)
+            log.msg("unknown auth response ({0})".format(result))
 
     def _doClientInitialization(self):
         self.transport.write(pack("!B", self.factory.shared))
@@ -145,7 +149,8 @@ class RFBClient(Protocol):
         elif msgid == 3:
             self.expect(self._handleServerCutText, 7)
         else:
-            log.msg("unknown message received (id %d)" % msgid)
+            if self.debug:
+                log.msg("unknown message received (id {0})".format(msgid))
             self.expect(self._handleConnection, 1)
 
     def _handleFramebufferUpdate(self, block):
@@ -196,7 +201,9 @@ class RFBClient(Protocol):
 
                 pass
             else:
-                log.msg("unknown encoding received (encoding %d)" % encoding)
+                if self.debug:
+                    log.msg("unknown encoding received (encoding {0})"
+                            .format(encoding))
                 self._doConnection()
         else:
             self._doConnection()
@@ -229,7 +236,7 @@ class RFBClient(Protocol):
         pos = 0
         end = len(block)
         sz = self.bypp + 8
-        format = "!%dsHHHH" % self.bypp
+        format = "!{0}sHHHH".format(self.bypp)
         while pos < end:
             (color, x, y, width, height) = unpack(format, block[pos:pos + sz])
             self.fillRectangle(topx + x, topy + y, width, height, color)
@@ -251,7 +258,7 @@ class RFBClient(Protocol):
         #~ print "_handleDecodeCORRERectangle"
         pos = 0
         sz = self.bypp + 4
-        format = "!%dsBBBB" % self.bypp
+        format = "!{0}sBBBB".format(self.bypp)
         while pos < sz:
             (color, x, y, width, height) = unpack(format, block[pos:pos + sz])
             self.fillRectangle(topx + x, topy + y, width, height, color)
@@ -344,7 +351,6 @@ class RFBClient(Protocol):
 
     def _handleDecodeHextileRAW(self, block, bg, color,
                                 x, y, width, height, tx, ty, tw, th):
-
         """ Decoded tile in raw encoding  """
 
         self.updateRectangle(tx, ty, tw, th, block)
@@ -522,7 +528,7 @@ class RFBClient(Protocol):
     def vncAuthFailed(self, reason):
         """called when the authentication failed.
            the connection is closed."""
-        log.msg("Cannot connect: %s" % reason)
+        log.msg("Cannot connect: {0}".format(reason))
 
     def beginUpdate(self):
         """called before a series of updateRectangle(),

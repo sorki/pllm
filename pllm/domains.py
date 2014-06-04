@@ -1,7 +1,7 @@
-import logging
 import threading
 
 import libvirt
+from twisted.python import log
 
 import util
 
@@ -28,8 +28,13 @@ class Domain(object):
         for key in keys:
             self.key_press(key)
 
-    def click(self, button):
-        self.mouse_press(button)
+    def click(self):
+        self.mouse_press(1)
+
+    def clickxy(self, x, y):
+        #self.mouse_move(x, y)
+        self.mouse_drag(x, y)
+        self.mouse_press(1)
 
     # composition with transport
     def trans(self, method, *args, **kwargs):
@@ -76,12 +81,11 @@ class LibvirtDomain(Domain):
         self.dom = dom
 
     def start(self):
-        logging.debug('Creating domain')
+        log.msg('Creating domain')
         self.dom.create()
 
     def stop(self):
         util.destroy_libvirt_domain(self.dom)
 
-    @classmethod
     def is_running(self):
         return self.dom.info()[0] == libvirt.VIR_DOMAIN_RUNNING

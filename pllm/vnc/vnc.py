@@ -70,6 +70,8 @@ class VNC(rfb.RFBClient):
         self.pointerEvent(self.x, self.y, buttonmask=buttons)
         self.pointerEvent(self.x, self.y, buttonmask=self.buttons)
 
+        self.framebufferUpdateRequest()
+
         return self
 
     def mouse_down(self, button):
@@ -95,7 +97,7 @@ class VNC(rfb.RFBClient):
     def mouse_move(self, x, y):
         """ Move the mouse pointer to position (x, y)
         """
-        log.msg('mouse_move {0},{1}'.format(x, y))
+        #log.msg('mouse_move {0},{1}'.format(x, y))
         self.x, self.y = x, y
         self.pointerEvent(x, y, self.buttons)
         return self
@@ -115,11 +117,11 @@ class VNC(rfb.RFBClient):
             ysteps = xrange(self.y, y, step)
 
         for ypos in ysteps:
-            time.sleep(.2)
+            #time.sleep(.2)
             self.mouse_move(self.x, ypos)
 
         for xpos in xsteps:
-            time.sleep(.2)
+            #time.sleep(.2)
             self.mouse_move(xpos, self.y)
 
         self.mouse_move(x, y)

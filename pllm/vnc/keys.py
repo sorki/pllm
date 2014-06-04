@@ -88,7 +88,9 @@ KEYMAP = {
 
     'slash': KEY_BackSlash,
     'bslash': KEY_BackSlash,
+    '\\': KEY_BackSlash,
     'fslash': KEY_ForwardSlash,
+    '/': KEY_ForwardSlash,
     'spacebar': KEY_SpaceBar,
     'space': KEY_SpaceBar,
     'sb': KEY_SpaceBar,

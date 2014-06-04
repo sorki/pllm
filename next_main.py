@@ -1,15 +1,15 @@
 #!/usr/bin/python
 import os
-import logging
+import shutil
 
 from twisted.python import log
 from twisted.application import service
 from twisted.application.internet import TCPClient
-from twisted.internet import task
-from twisted.internet import reactor
+#from twisted.internet import task
+from twisted.internet import reactor, threads
 from twisted.internet.defer import Deferred
 
-from pllm import manhole, interpret
+from pllm import manhole, interpret, vision
 from pllm import backends, config
 
 from pllm.vnc.vnc import VNCFactory
@@ -23,7 +23,7 @@ def trace(func):                         # Use function, not class with __call__
         return val
     return wrapper
 
-CAP_DELAY = .5
+CAP_DELAY = 1
 
 
 class Pllm(object):
@@ -39,6 +39,7 @@ class Pllm(object):
         self.dom = None
         self.manhole = None
         self.app = application
+        self.ocr_enabled = True
 
         self.dom_ident = 'f20'
         f = '/var/lib/libvirt/images/Fedora-20-x86_64-netinst.iso'
@@ -49,7 +50,6 @@ class Pllm(object):
         self.work_dir = config.get('work_dir')
         self.state = 'VM_INIT'
 
-    @trace
     def main(self):
         if self.state == 'VM_INIT':
             if not self.dom:
@@ -111,20 +111,33 @@ class Pllm(object):
         self.vnc = proto
         self.dom.transport = proto
 
-    def test_rects(self, proto):
-        print 'rects'
-        print proto
-        reactor.callLater(2, proto.keyPress, 'enter')
-        reactor.callLater(8, proto.keyPress, 'alt Q')
-        #reactor.callLater(12, test_rects, proto)
-        #proto.keyPress('alt Q')
+    @trace
+    def store_ocr_results(self, ocr_res):
+        full, segments = ocr_res
+        log.msg('ocr: full page text length:{0}, segments:{1}'
+                .format(len(full), len(segments)))
+
+        log.msg('ocr: full sample: "{0}..."'.format(repr(full[:30])))
+
+        self.dom.text = full
+        self.dom.segments = segments
 
     @trace
     def save_screen(self, proto, counter):
-        fpath = os.path.join(self.work_dir, "{0}.png".format(counter))
+        screendir = os.path.join(self.work_dir, str(counter))
+        if os.path.isdir(screendir):
+            shutil.rmtree(screendir)
+
+        os.mkdir(screendir)
+
+        fpath = os.path.join(screendir, "screen.png")
         cpath = os.path.join(self.work_dir, "last.png")
         proto.save_screen(fpath)
         proto.save_screen(cpath)
+
+        if self.ocr_enabled:
+            d = threads.deferToThread(vision.process, fpath)
+            d.addCallback(self.store_ocr_results)
 
         with self.dom.screen_lock:
             self.dom.screen = proto.screen
@@ -138,22 +151,6 @@ class Pllm(object):
         proto.deferred.addCallback(self.save_screen, counter)
 
     @trace
-    def start_jobs(self, proto):
-        log.msg("Starting jobs")
-
-        proto.framebufferUpdateRequest()
-        #l = task.LoopingCall(ocr, proto)
-        #reactor.callLater(1, l.start, 5)
-
-        l2 = task.LoopingCall(self.test_rects, proto)
-        l2.start(8)
-
-        #l3 = task.LoopingCall(store_current, proto)
-        #l3.start(1)
-        self.schedule_save(proto, 0)
-        #reactor.callLater(1, l2.start, 5)
-
-    @trace
     def start_interpret(self):
         with open('next_pseudo.py') as f:
             code = f.read()
@@ -161,9 +158,15 @@ class Pllm(object):
         self.int = interpret.Interpret(self.dom)
         reactor.callInThread(self.int.start, code)
 
+    @trace
+    def stop(self):
+        # stop bdb interpreter
+        if self.int:
+            self.int.set_quit()
+
 
 application = service.Application("PLLM")
 app = Pllm(application)
 # yield so logging and twistd stuff can be initialized
-logging.basicConfig(level=logging.DEBUG)
 reactor.callLater(0.1, app.main)
+reactor.addSystemEventTrigger('during', 'shutdown', app.stop)

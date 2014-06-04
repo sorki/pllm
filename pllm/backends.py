@@ -1,9 +1,9 @@
 import os
 import random
-import logging
 
 import libvirt
 from lxml import etree
+from twisted.python import log
 
 import util
 import domains
@@ -32,7 +32,7 @@ def fetch_all_guests(conn):
             active.append(vm)
         except libvirt.libvirtError:
             # guest probably in process of dieing
-            logging.warn("Failed to lookup active domain id %d", i)
+            log.msg("Failed to lookup active domain id #{0}".format(i))
 
     # Get all inactive VMs
     names = conn.listDefinedDomains()
@@ -42,7 +42,7 @@ def fetch_all_guests(conn):
             inactive.append(vm)
         except:
             # guest probably in process of dieing
-            logging.warn("Failed to lookup inactive domain %d", name)
+            log.msg("Failed to lookup inactive domain {0}".format(name))
 
     return (active, inactive)
 
@@ -101,12 +101,12 @@ class LibvirtBackend(object):
     def get_volume(self, name, typ, size, force_recreate=False):
         vol = None
         volpath = self.volume_path(name)
-        logging.debug('Looking for volume with path: {0}'.format(volpath))
+        log.msg('Looking for volume with path: {0}'.format(volpath))
         try:
             vol = self.con.storageVolLookupByPath(volpath)
-            logging.debug('Existing volume found')
+            log.msg('Existing volume found')
         except libvirt.libvirtError:
-            logging.debug('Existing volume not found')
+            log.msg('Existing volume not found')
 
         def recreate(vol):
             if vol:
@@ -117,11 +117,11 @@ class LibvirtBackend(object):
         if vol:
             orig_typ, cap, alloc = vol.info()
             if cap != size:
-                logging.debug('Volume capacity mismatch, recreating')
+                log.msg('Volume capacity mismatch, recreating')
                 recreate(vol)
 
             if force_recreate:
-                logging.debug('Force recreate in effect')
+                log.msg('Force recreate in effect')
                 recreate(vol)
         else:
             recreate(vol)
@@ -147,30 +147,30 @@ class LibvirtBackend(object):
         '''
 
         name = self.instance_name(ident)
-        logging.debug('Cleanup for {0} initiated'.format(name))
+        log.msg('Cleanup for {0} initiated'.format(name))
 
         dom = None
         try:
             dom = self.con.lookupByName(name)
         except libvirt.libvirtError:
-            logging.debug('Existing domain not found')
+            log.msg('Existing domain not found')
 
         if dom:
-            logging.debug('Domain already defined')
+            log.msg('Domain already defined')
             domain = self.con.lookupByName(name)
             util.destroy_libvirt_domain(domain)
             domain.undefine()
-            logging.debug('Domain undefined')
+            log.msg('Domain undefined')
 
         vols = filter(lambda x: x.startswith(name), self.pool.listVolumes())
         for vol in vols:
             volpath = self.volume_path(vol)
-            logging.debug('Looking for {0}'.format(volpath))
+            log.msg('Looking for {0}'.format(volpath))
             lvvol = self.con.storageVolLookupByPath(volpath)
-            logging.debug('Deleting volume {0}'.format(volpath))
+            log.msg('Deleting volume {0}'.format(volpath))
             ret = lvvol.delete(libvirt.VIR_STORAGE_VOL_DELETE_NORMAL)
             if ret != 0:
-                logging.error('Unable to delete volume {0}'.format(volpath))
+                log.msg('Unable to delete volume {0}'.format(volpath))
 
     def create_test_vm(self, xml, ident, media_path):
         name = self.instance_name(ident)
@@ -184,18 +184,18 @@ class LibvirtBackend(object):
         disk_sources = tree.xpath('/domain/devices/disk[@device="disk"]/source')
         for source in disk_sources:
             if 'PLACEHOLDER' in source.attrib['dev']:
-                logging.debug('Found disk placeholder, processing')
+                log.msg('Found disk placeholder, processing')
                 gigs = 5
                 if '_' in source.attrib['dev']:
                     gigs = int(
                         source.attrib['dev'].split('_')[1].replace('G', ''))
-                    logging.debug('Custom volume size: {0}'.format(gigs))
+                    log.msg('Custom volume size: {0}'.format(gigs))
 
                 size = gigs * 1024 ** 3
 
                 volname = self.gen_volume_name(ident)
                 path = self.get_volume(volname, self.pool_type, size)
-                logging.debug('New volume: {0}'.format(path))
+                log.msg('New volume: {0}'.format(path))
                 source.attrib['dev'] = path
 
         # handle CDrom
@@ -220,7 +220,7 @@ class LibvirtBackend(object):
                 new_mac = random_mac()
                 if new_mac not in used_macs:
                     mac.attrib['address'] = new_mac
-                    logging.debug('Setting mac address to {0}'.format(new_mac))
+                    log.msg('Setting mac address to {0}'.format(new_mac))
                     break
 
         newxml = etree.tostring(tree)

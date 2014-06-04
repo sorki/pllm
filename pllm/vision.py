@@ -1,10 +1,9 @@
 import os
-import logging
-
 
 import cv
 import cv2
 import tesseract
+from twisted.python import log
 
 
 def ocr(fpath, block=True):
@@ -88,7 +87,7 @@ def segmentize(fpath):
     # save found segments
     for s in hulls:
         x, y, w, h = cv2.boundingRect(s)
-        roi = gray[y:y + h, x:x + w]
+        roi = img[y:y + h, x:x + w]
         segname = "{0}/{1}_segment_{2}_{3}.png".format(fdir, name, x, y)
         cv2.imwrite(segname, roi)
         opt = ocr_optimize(segname)
@@ -123,7 +122,7 @@ def template_match(target, template):
 
 
 def template_match_paths(target_fpath, template_fpath,
-                         scale_template=1, threshold=0.5):
+                         scale_template=1, threshold=0.9):
 
     target = cv2.imread(target_fpath)
     template = cv2.imread(template_fpath)
@@ -141,7 +140,7 @@ def template_match_paths(target_fpath, template_fpath,
                               interpolation=cv2.INTER_CUBIC)
 
     if max_val >= threshold:
-        logging.debug("Template matched, max_val: {0:.2}".format(max_val))
+        log.msg("Template matched, max_val: {0:.2}".format(max_val))
 
         cv2.rectangle(target, (x - w / 2, y - h / 2), (x + w / 2, y + h / 2),
                       (255, 0, 0), 2)

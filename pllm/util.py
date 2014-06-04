@@ -1,8 +1,8 @@
 import os
-import logging
 
 import cv2
 import libvirt
+from twisted.python import log
 
 import config
 
@@ -21,10 +21,10 @@ def destroy_libvirt_domain(domain):
             libvirt.VIR_DOMAIN_PAUSED,
             libvirt.VIR_DOMAIN_PMSUSPENDED]:
 
-        logging.debug('Destroying domain')
+        log.msg('Destroying domain')
         domain.destroy()
     else:
-        logging.debug('Domain not running')
+        log.msg('Domain not running')
 
 
 def load_img(name):

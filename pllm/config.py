@@ -8,6 +8,7 @@ prefix = "/usr"
 datadir = "/usr/share"
 libdir = "/usr/lib64"
 
+
 def config_parser():
     config = ConfigParser.SafeConfigParser()
     config_list = [os.path.join(sysconfdir, "pllm", "config"),
@@ -17,11 +18,13 @@ def config_parser():
     config.read(config_list)
     return config
 
+
 def get(key):
     if key in CONFIG:
         return CONFIG[key]
 
     return None
+
 
 def load():
     result = {}
@@ -35,7 +38,7 @@ def load():
             if value.replace('.', '').isdigit():
                 value = float(value)
 
-            result[option.lower()] =  value
+            result[option.lower()] = value
 
     return result
 

@@ -1,5 +1,4 @@
 import time
-import logging
 
 from pllm import vision, config, util
 
@@ -39,10 +38,10 @@ class cachefind(object):
 def find(dom, template):
     res, x, y = vision.template_match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
-        logging.debug('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = True
     else:
-        logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
 
     return ret
@@ -53,10 +52,10 @@ def find(dom, template):
 def findxy(dom, template):
     res, x, y = vision.template_match(dom.screen, util.load_img(template))
     if res > config.get('treshold'):
-        logging.debug('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = True
     else:
-        logging.debug('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
         ret = False
 
     return (ret, x, y)
@@ -64,89 +63,176 @@ def findxy(dom, template):
 
 def expect(dom, items):
     for stage_name, template, callback in items:
-        logging.debug('Testing stage {0}'.format(stage_name))
+        print('Testing stage {0}'.format(stage_name))
         if find(dom, template):
-            logging.debug('Stage {0} found'.format(stage_name))
+            print('Stage "{0}" found'.format(stage_name))
+            callback(dom)
+
+
+def expect_text(dom, items):
+    for stage_name, text, callback in items:
+        print('Testing text presence "{0}" for stage "{1}"'
+              .format(text, stage_name))
+
+        if text.lower() in dom.text.lower():
+            print('Stage "{0}" found'.format(stage_name))
             callback(dom)
 
 
 def click(dom, template):
-    logging.debug('Looking for click target')
+    print('Looking for click target')
     ret, x, y = findxy(dom, template)
 
     if ret:
-        dom.click(x, y)
+        dom.clickxy(x, y)
     else:
-        logging.debug('Click target not found')
+        print('Click target not found')
 
     time.sleep(0.5)
 
 
-def wait(dom, template, timeout_seconds=20):
+def click_text(dom, text):
+    print('Looking for click target with text "{0}"'.format(text))
+
+    for segname, data in dom.segments.items():
+        rect, ocrd = data
+        x, y, w, h = rect
+
+        if text.lower() in ocrd.lower():
+            print('Found target at {0}x{1}'.format(x, y))
+            dom.clickxy(x + w / 2, y + h / 2)
+            return
+
+    print('Click target not found')
+
+
+def wait(dom, template, timeout_seconds=30):
     start = time.time()
-    logging.debug('Waiting for target for {0} sec'.format(timeout_seconds))
+    print('Waiting for target for {0} sec'.format(timeout_seconds))
     while True:
         if find(dom, template):
-            logging.debug('Wait target found after {:.2} sec'.format(
+            print('Wait target found after {:.2} sec'.format(
                 time.time() - start))
             return True
 
         time.sleep(0.1)
 
         if time.time() > start + timeout_seconds:
-            logging.debug('!! Timeout on wait')
+            print('!! Timeout on wait')
             return False
 
 
-def waitclick(dom, template):
+def wait_text(dom, text, timeout_seconds=30):
+    start = time.time()
+    print('Waiting for "{0}" text for {1} sec'.format(text, timeout_seconds))
+
+    while True:
+        if text.lower() in dom.text.lower():
+            print('Wait target found after {:.2} sec'.format(
+                time.time() - start))
+            return True
+
+        time.sleep(0.1)
+
+        if time.time() > start + timeout_seconds:
+            print('!! Timeout on wait')
+            return False
+
+
+def wait_click(dom, template):
     wait(dom, template)
     click(dom, template)
 
 
+def wait_click_text(dom, text):
+    wait_text(dom, text)
+    click_text(dom, text)
+
+
 def grub(dom):
-    dom.key_down('ret')
+    dom.key_press('ret')
+    # skip media check
+    time.sleep(7)
+    for i in range(5):
+        dom.key_press('esc')
+        time.sleep(1)
 
 
 def anaconda(dom):
-    time.sleep(1)
-    click(dom, 'anaconda_continue')
-    wait(dom, 'anaconda_my_fate', 6)
-    if find(dom, 'anaconda_eng_lang'):
-        logging.warning('First click glitch present (Found eng lang)')
-        click(dom, 'anaconda_eng_lang')
-        click(dom, 'anaconda_continue')
+    # first click glitch, but why?
+    dom.mouse_move(1, 1)
+    #dom.click()
 
-    waitclick(dom, 'anaconda_my_fate')
-    waitclick(dom, 'anaconda_storage_btn')
-    waitclick(dom, 'anaconda_continue')
-    waitclick(dom, 'anaconda_dialog_continue')
+    click_text(dom, 'continue')
+    if not wait_text(dom, 'installation summary', 5):
+        print('First click glitch present')
+        click_text(dom, 'continue')
 
-    waitclick(dom, 'anaconda_software_selection_btn')
-    #waitclick(dom, 'anaconda_xfce_choice')
-    waitclick(dom, 'anaconda_done_btn')
+    wait_text(dom, 'installation summary')
 
-    waitclick(dom, 'anaconda_begin_btn')
-    waitclick(dom, 'anaconda_bluekey_img')
-    wait(dom, 'anaconda_done_btn')
+    while True:
+        wait_click(dom, 'anaconda_storage_incomplete_btn')
+        if wait_text(dom, 'local standard disks'):
+            break
+
+    wait_click_text(dom, 'done')
+    wait_text(dom, 'installation options')
+    dom.key_press('alt-m')
+    wait_click_text(dom, 'continue')
+
+    def create_partition(mount, size):
+        wait_text(dom, 'manual partitioning')
+
+        while not wait_text(dom, 'add a new mount point', 2):
+            wait_click(dom, 'anaconda_partitioning_plus_btn')
+
+        dom.write(mount)
+        dom.key_press('right')
+        dom.key_press('tab')
+        dom.key_press('tab')
+        dom.write(size)
+
+        while not wait_text(dom, 'manual partitioning', 2):
+            wait_click_text(dom, 'add mount point')
+
+    create_partition('/', '5G')
+    create_partition('/boot', '100M')
+    create_partition('/home', '1G')
+
+    wait_click_text(dom, 'done')
+    wait_click_text(dom, 'accept changes')
+
+    wait_click(dom, 'anaconda_software_btn')
+    #wait_click(dom, 'anaconda_xfce_choice')
+    wait_click_text(dom, 'done')
+    wait_click_text(dom, 'begin installation')
+
+    wait_click(dom, 'anaconda_rootpw_btn')
     for _ in [1, 2]:
         for i in range(6):
-            dom.key_down(str(i))
+            dom.key_press(str(i))
 
         dom.key_down('tab')
 
+    wait_click_text(dom, 'done')
+    wait_click_text(dom, 'done')
+
+    '''
+    wait_click(dom, 'anaconda_begin_btn')
     click(dom, 'anaconda_done_btn')
-    waitclick(dom, 'anaconda_done_btn')
+    wait_click(dom, 'anaconda_done_btn')
     wait(dom, 'anaconda_reboot_btn', 3600)
     click(dom, 'anaconda_reboot_btn')
+    '''
 
-    logging.debug('Waiting for domain to shutdown')
+    print('Waiting for domain to shutdown')
     while dom.is_running():
-        logging.debug('.')
+        print('.')
         time.sleep(1)
 
     print dom.is_running()
     time.sleep(1)
-    logging.debug('Starting again')
+    print('Starting again')
     print dom.is_running()
     dom.start()
 
@@ -157,9 +243,9 @@ def write(dom, text):
 
 
 def firstboot(dom):
-    waitclick(dom, 'firstboot_forward_btn')
-    waitclick(dom, 'firstboot_forward_btn')
-    waitclick(dom, 'firstboot_forward_btn')
+    wait_click(dom, 'firstboot_forward_btn')
+    wait_click(dom, 'firstboot_forward_btn')
+    wait_click(dom, 'firstboot_forward_btn')
     wait(dom, 'firstboot_create_user_label')
     write(dom, 'pllm framework')
     dom.key_down('tab')
@@ -169,21 +255,22 @@ def firstboot(dom):
     write(dom, 'a')
     dom.key_down('tab')
     write(dom, 'a')
-    waitclick(dom, 'firstboot_forward_btn')
-    waitclick(dom, 'firstboot_finish_btn')
+    wait_click(dom, 'firstboot_forward_btn')
+    wait_click(dom, 'firstboot_finish_btn')
 
 
 def f20(dom):
     expect(dom, [
         ('grub', 'grub_autoboot_label', grub),
-        ('anaconda', 'anaconda_installation_label', anaconda),
-        ('firstboot', 'firstboot_welcome_label', firstboot),
+    ])
+
+    expect_text(dom, [
+        ('anaconda', 'welcome to fedora', anaconda)
     ])
 
 try:
     while True:
-        print 'f20'
-        logging.debug('f20')
+        print('f20')
         f20(dom)
         time.sleep(1)
 except KeyboardInterrupt:
