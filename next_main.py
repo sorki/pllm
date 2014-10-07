@@ -4,13 +4,13 @@ import shutil
 
 from twisted.python import log
 from twisted.application import service
-from twisted.application.internet import TCPClient
-#from twisted.internet import task
+from twisted.application.internet import TCPClient, TCPServer
+from twisted.internet import task
 from twisted.internet import reactor, threads
 from twisted.internet.defer import Deferred
 
 from pllm import manhole, interpret, vision
-from pllm import backends, config
+from pllm import backends, config, monitor
 
 from pllm.vnc.vnc import VNCFactory
 
@@ -37,6 +37,7 @@ class Pllm(object):
         self.vnc = None
         self.int = None
         self.dom = None
+        self.mon = None
         self.manhole = None
         self.app = application
         self.ocr_enabled = True
@@ -48,9 +49,17 @@ class Pllm(object):
         self.storage_pool_name = config.get('storage_pool_name')
 
         self.work_dir = config.get('work_dir')
-        self.state = 'VM_INIT'
+        self.state = 'INIT'
 
     def main(self):
+        prev_state = self.state
+
+        if self.state == 'INIT':
+            if not self.mon:
+                self.start_monitor()
+            else:
+                self.state = 'VM_INIT'
+
         if self.state == 'VM_INIT':
             if not self.dom:
                 self.start_domain()
@@ -75,6 +84,9 @@ class Pllm(object):
                 self.start_interpret()
             else:
                 self.state = 'RUNNING'
+
+        if prev_state != self.state:
+            self.emit(self.state)
 
         reactor.callLater(1, self.main)
 
@@ -103,6 +115,14 @@ class Pllm(object):
 
         self.manhole = manhole.manhole_service(opts)
         self.manhole.setServiceParent(self.app)
+
+    def start_monitor(self):
+        self.mon = monitor.MonitorFactory()
+        monitor_service = TCPServer(1666, self.mon)
+        monitor_service.setServiceParent(self.app)
+
+    def emit(self, msg):
+        self.mon.broadcast(msg)
 
     @trace
     def vnc_started(self, proto):
