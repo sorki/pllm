@@ -132,6 +132,16 @@ def wait_text(dom, text, timeout_seconds=30):
                 time.time() - start))
             return True
 
+        # check segments
+        for segname, data in dom.segments.items():
+            rect, ocrd = data
+            x, y, w, h = rect
+
+            if text.lower() in ocrd.lower():
+                print('Wait target found at segment {0}x{1} after{:.2} sec'
+                      .format(x, y, time.time() - start))
+                return True
+
         time.sleep(0.1)
 
         if time.time() > start + timeout_seconds:
