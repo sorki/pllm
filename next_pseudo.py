@@ -160,12 +160,16 @@ def wait_click_text(dom, text):
 
 
 def grub(dom):
+    dom.key_press('tab')
+    # erase part of cmdline
+    for _ in "rd.live.check quiet":
+        dom.key_press('backspace')
+        time.sleep(0.2)
+
+    # disable gelocation so we don't start with random language
+    dom.write(' geoloc=0')
+    time.sleep(2)  # screenshot
     dom.key_press('ret')
-    # skip media check
-    time.sleep(7)
-    for i in range(5):
-        dom.key_press('esc')
-        time.sleep(1)
 
 
 def anaconda(dom):
@@ -218,14 +222,25 @@ def anaconda(dom):
     wait_click_text(dom, 'begin installation')
 
     wait_click(dom, 'anaconda_rootpw_btn')
+    wait_text(dom, 'root password')
     for _ in [1, 2]:
         for i in range(6):
             dom.key_press(str(i))
 
         dom.key_down('tab')
 
+    # password too simple, need to click two times
     wait_click_text(dom, 'done')
     wait_click_text(dom, 'done')
+
+    time.sleep(2)
+    print(dom.text)
+
+    wait_click(dom, 'anaconda_user_creation_btn')
+    wait_click_text(dom, 'done')
+
+    time.sleep(2)
+    print(dom.text)
 
     '''
     wait_click(dom, 'anaconda_begin_btn')
@@ -234,6 +249,10 @@ def anaconda(dom):
     wait(dom, 'anaconda_reboot_btn', 3600)
     click(dom, 'anaconda_reboot_btn')
     '''
+
+    print('Waiting for installation to finish')
+    while True:
+        wait_click_text(dom, 'reboot')
 
     print('Waiting for domain to shutdown')
     while dom.is_running():
