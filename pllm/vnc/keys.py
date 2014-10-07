@@ -69,6 +69,7 @@ KEY_SpaceBar = 0x0020
 
 KEYMAP = {
     'bsp': KEY_BackSpace,
+    'backspace': KEY_BackSpace,
     'tab': KEY_Tab,
     'ret': KEY_Return,
     'return': KEY_Return,
