@@ -126,7 +126,10 @@ class Pllm(object):
 
     @trace
     def vnc_started(self, proto):
-        proto.framebufferUpdateRequest()
+        #proto.framebufferUpdateRequest()
+        self.vnc_loop = task.LoopingCall(proto.framebufferUpdateRequest)
+        self.vnc_loop.start(1.0)
+
         self.schedule_save(proto, 0)
         self.vnc = proto
         self.dom.transport = proto
