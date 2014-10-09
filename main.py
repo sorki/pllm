@@ -15,7 +15,7 @@ from pllm import backends, config, monitor
 from pllm.vnc.vnc import VNCFactory
 
 
-def trace(func):                         # Use function, not class with __call__
+def trace(func):
     def wrapper(*args, **kwargs):
         print('{0}'.format(func.__name__))
         val = func(*args, **kwargs)

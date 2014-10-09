@@ -242,14 +242,6 @@ def anaconda(dom):
     time.sleep(2)
     print(dom.text)
 
-    '''
-    wait_click(dom, 'anaconda_begin_btn')
-    click(dom, 'anaconda_done_btn')
-    wait_click(dom, 'anaconda_done_btn')
-    wait(dom, 'anaconda_reboot_btn', 3600)
-    click(dom, 'anaconda_reboot_btn')
-    '''
-
     print('Waiting for installation to finish')
     while True:
         wait_click_text(dom, 'reboot')
