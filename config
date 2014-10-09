@@ -1,0 +1,6 @@
+[main]
+treshold = 0.9
+work_dir = /tmp/pllm/run
+template_dir = /home/rmarko/work/qa/pllm/img/
+libvirt_uri = qemu:///system
+storage_pool_name = lvm
