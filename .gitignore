@@ -2,3 +2,6 @@ _z/*
 s/
 img*/
 *.pyc
+local/
+TODO
+run/
