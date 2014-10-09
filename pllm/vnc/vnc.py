@@ -1,5 +1,3 @@
-import time
-
 import cv2
 import numpy as np
 
@@ -117,11 +115,9 @@ class VNC(rfb.RFBClient):
             ysteps = xrange(self.y, y, step)
 
         for ypos in ysteps:
-            #time.sleep(.2)
             self.mouse_move(self.x, ypos)
 
         for xpos in xsteps:
-            #time.sleep(.2)
             self.mouse_move(xpos, self.y)
 
         self.mouse_move(x, y)
@@ -142,7 +138,6 @@ class VNC(rfb.RFBClient):
         if not data:
             return
 
-        #print "%s " * 4 % (x, y, width, height)
         # create opencv image and convert colors properly
         shape = (height, width, 4)
         img = np.ndarray(shape, dtype=np.uint8, buffer=data)
@@ -155,18 +150,16 @@ class VNC(rfb.RFBClient):
 
         if cw < (x + width) or ch < (y + height):
             # upward screen resize
-            #log.msg('upward from:')
-            #print "%s " * 2 % (ch, cw)
             ncw = max(cw, x + width)
             nch = max(ch, y + height)
-            #log.msg('ncw {} nch {}'.format(ncw, nch))
             nimg = np.ndarray((nch, ncw, d), dtype=np.uint8)
             nimg[0:ch, 0:cw] = self.screen
             nimg[y:height, x:width] = img
             self.screen = nimg
-            self.save_screen('/tmp/pllm/run/upward.png')
+
         elif cw == width and ch == height:
             self.screen = img
+
         else:
             self.screen[y:y + height, x:x + width] = img
 
@@ -194,5 +187,4 @@ class VNCFactory(ClientFactory):
         log.msg("VNC connection made")
         self.proto = protocol
         self.proto.framebufferUpdateRequest()
-        #self.deferred.callback(protocol)
         self.deferred.callback(self.proto)
