@@ -1,3 +1,3 @@
 #!/bin/bash
 rm -rf /tmp/pllm/run/*
-twistd -ny next_main.py
+twistd -ny main.py
