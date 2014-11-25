@@ -1,4 +1,6 @@
 import os
+import base64
+import cPickle as pickle
 
 import cv2
 import libvirt
@@ -30,3 +32,11 @@ def destroy_libvirt_domain(domain):
 def load_img(name):
     return cv2.imread('{0}/{1}.png'.format(
                       config.CONFIG['template_dir'], name))
+
+
+def encdata(data):
+    return base64.b64encode(pickle.dumps(data))
+
+
+def decdata(data):
+    return base64.b64decode(pickle.loads(data))

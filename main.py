@@ -10,7 +10,7 @@ from twisted.internet import reactor, threads
 from twisted.internet.defer import Deferred
 
 from pllm import manhole, interpret, vision
-from pllm import backends, config, monitor
+from pllm import backends, config, monitor, util
 
 from pllm.vnc.vnc import VNCFactory
 
@@ -86,7 +86,7 @@ class Pllm(object):
                 self.state = 'RUNNING'
 
         if prev_state != self.state:
-            self.emit(self.state)
+            self.emit('STATE_CHANGE', self.state)
 
         reactor.callLater(1, self.main)
 
@@ -121,8 +121,14 @@ class Pllm(object):
         monitor_service = TCPServer(1666, self.mon)
         monitor_service.setServiceParent(self.app)
 
-    def emit(self, msg):
-        self.mon.broadcast(msg)
+    def emit(self, msg, data=None):
+        nmsg = msg
+        if data:
+            nmsg += ':{0}'.format(data)
+        self.mon.broadcast(nmsg)
+
+    def emitenc(self, msg, data):
+        self.emit(msg, util.encdata(data))
 
     @trace
     def vnc_started(self, proto):
@@ -142,6 +148,9 @@ class Pllm(object):
 
         log.msg('ocr: full sample: "{0}..."'.format(repr(full[:30])))
 
+        self.emitenc('OCR_FULL', full)
+        self.emitenc('OCR_SEGMENTS', segments)
+
         self.dom.text = full
         self.dom.segments = segments
 
@@ -158,6 +167,11 @@ class Pllm(object):
         proto.save_screen(fpath)
         proto.save_screen(cpath)
 
+        self.emit('SCREEN_COUNTER', counter)
+        self.emit('SCREEN_DIR', screendir)
+        self.emit('SCREEN_STORED', fpath)
+        self.emit('SCREEN_CURRENT', cpath)
+
         if self.ocr_enabled:
             d = threads.deferToThread(vision.process, fpath)
             d.addCallback(self.store_ocr_results)
@@ -166,15 +180,20 @@ class Pllm(object):
             self.dom.screen = proto.screen
             self.dom.screen_id = counter
 
+        self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
         reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)
 
     @trace
     def schedule_save(self, proto, counter):
+        self.emit('SCHEDULE_SAVE')
+
         proto.deferred = Deferred()
         proto.deferred.addCallback(self.save_screen, counter)
 
     @trace
     def start_interpret(self):
+        self.emit('START_INTERPRET')
+
         with open('pseudo.py') as f:
             code = f.read()
 
@@ -186,6 +205,8 @@ class Pllm(object):
         # stop bdb interpreter
         if self.int:
             self.int.set_quit()
+
+        self.emit('STOP_INTERPRET')
 
 
 application = service.Application("PLLM")
