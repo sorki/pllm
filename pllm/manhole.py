@@ -1,8 +1,8 @@
 from twisted.application import service, internet
-from twisted.cred import portal, checkers
+from twisted.cred import portal
 
 from twisted.conch.insults import insults
-from twisted.conch import manhole, manhole_ssh
+from twisted.conch import manhole, manhole_ssh, checkers
 
 
 class ChainedProtocolFactory(object):
@@ -24,9 +24,7 @@ def manhole_service(opts):
     if namespace is None:
         namespace = {}
 
-    # TODO: cfg
-    checker = checkers.FilePasswordDB('passwd')
-    # should use conch.checkers.SSHPublicKeyDatabase in production
+    checker = checkers.SSHPublicKeyDatabase()
 
     if opts['ssh']:
         sshRealm = manhole_ssh.TerminalRealm()
