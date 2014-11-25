@@ -175,7 +175,7 @@ class Pllm(object):
 
     @trace
     def start_interpret(self):
-        with open('next_pseudo.py') as f:
+        with open('pseudo.py') as f:
             code = f.read()
 
         self.int = interpret.Interpret(self.dom)
