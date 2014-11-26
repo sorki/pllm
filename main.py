@@ -15,13 +15,7 @@ from pllm import backends, config, monitor, util
 from pllm.vnc.vnc import VNCFactory
 
 
-def trace(func):
-    def wrapper(*args, **kwargs):
-        print('{0}'.format(func.__name__))
-        val = func(*args, **kwargs)
-        print('/{0}'.format(func.__name__))
-        return val
-    return wrapper
+trace = util.trace
 
 CAP_DELAY = 1
 
