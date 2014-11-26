@@ -109,7 +109,7 @@ class Pllm(object):
 
     def start_manhole(self):
         opts = {
-            'ssh':    1667,
+            'ssh':    int(config.get('ssh_port')),
             'namespace': {'pllm': self},
         }
 
@@ -118,7 +118,7 @@ class Pllm(object):
 
     def start_monitor(self):
         self.mon = monitor.MonitorFactory()
-        monitor_service = TCPServer(1666, self.mon)
+        monitor_service = TCPServer(int(config.get('monitor_port')), self.mon)
         monitor_service.setServiceParent(self.app)
 
     def emit(self, msg, data=None):
