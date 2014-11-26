@@ -24,6 +24,9 @@ class Domain(object):
         self.stop()
         self.start()
 
+    def is_running(self):
+        raise NotImplementedError
+
     # shortcuts
     def write(self, keys):
         for key in keys:
