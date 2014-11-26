@@ -35,7 +35,7 @@ def load():
             value = parser.get(section, option)
             if value.isdigit():
                 value = int(value)
-            if value.replace('.', '').isdigit():
+            elif value.replace('.', '').isdigit():
                 value = float(value)
 
             result[option.lower()] = value
