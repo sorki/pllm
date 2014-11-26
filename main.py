@@ -122,13 +122,10 @@ class Pllm(object):
         monitor_service.setServiceParent(self.app)
 
     def emit(self, msg, data=None):
-        nmsg = msg
-        if data:
-            nmsg += ':{0}'.format(data)
-        self.mon.broadcast(nmsg)
+        self.mon.emit(msg, data)
 
     def emitenc(self, msg, data):
-        self.emit(msg, util.encdata(data))
+        self.mon.emitenc(msg, data)
 
     @trace
     def vnc_started(self, proto):

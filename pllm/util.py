@@ -39,4 +39,4 @@ def encdata(data):
 
 
 def decdata(data):
-    return base64.b64decode(pickle.loads(data))
+    return pickle.loads(base64.b64decode(data))
