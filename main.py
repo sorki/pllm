@@ -183,10 +183,13 @@ class Pllm(object):
     def start_interpret(self):
         self.emit('START_INTERPRET')
 
+        def interpret_emit(frame):
+            self.emit('INTERPRET_LINE', frame.f_lineno)
+
         with open('pseudo.py') as f:
             code = f.read()
 
-        self.int = interpret.Interpret(self.dom)
+        self.int = interpret.Interpret(self.dom, interpret_emit)
         reactor.callInThread(self.int.start, code)
 
     @trace
