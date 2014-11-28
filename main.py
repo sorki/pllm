@@ -118,8 +118,6 @@ class Pllm(object):
     def emit(self, msg, data=None):
         self.mon.emit(msg, data)
 
-    def emitenc(self, msg, data):
-        self.mon.emitenc(msg, data)
 
     @trace
     def vnc_started(self, proto):
@@ -139,8 +137,8 @@ class Pllm(object):
 
         log.msg('ocr: full sample: "{0}..."'.format(repr(full[:30])))
 
-        self.emitenc('OCR_FULL', full)
-        self.emitenc('OCR_SEGMENTS', segments)
+        self.emit('OCR_FULL', full)
+        self.emit('OCR_SEGMENTS', segments)
 
         self.dom.text = full
         self.dom.segments = segments

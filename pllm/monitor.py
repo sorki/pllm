@@ -5,6 +5,24 @@ from twisted.protocols.basic import LineReceiver
 import util
 
 
+def encode(evt, data):
+    if data:
+        return '_{0}:{1}'.format(evt, util.encdata(data))
+    else:
+        return evt
+
+
+def decode(msg):
+    if msg[0] == '_':
+        evt, data = msg.split(':', 1)
+        data = util.decdata(data)
+    else:
+        evt = msg
+        data = None
+
+    return (evt, data)
+
+
 class MonitorServer(LineReceiver):
     delimiter = '\n'
 
@@ -29,32 +47,19 @@ class MonitorFactory(Factory):
             client.sendLine(msg)
 
     def emit(self, msg, data=None):
-        nmsg = msg
-        if data:
-            nmsg += ':{0}'.format(data)
-        self.broadcast(nmsg)
-
-    def emitenc(self, msg, data):
-        self.emit(msg, '|' + util.encdata(data))
+        self.broadcast(encode(msg, data))
 
 
 class MonitorClient(LineReceiver):
     delimiter = '\n'
     fwd = None
-
-    def decode(self, msg):
-        if ':' in msg:
-            evt, data = msg.split(':', 1)
-            if data[0] == '|':
-                data = util.decdata(data[1:])
-        else:
-            evt = msg
-            data = None
-
-        return (evt, data)
+    fwd_raw = None
 
     def lineReceived(self, line):
-        evt, data = self.decode(line)
+        evt, data = decode(line)
+
+        if self.fwd_raw:
+            self.fwd_raw(line)
 
         if self.fwd:
             self.fwd(evt, data)
