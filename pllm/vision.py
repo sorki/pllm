@@ -67,7 +67,7 @@ def segmentize(fpath):
     delta = 3
     min_area = 500
     max_area = 35000
-    max_variation = 0.25
+    max_variation = 0.10
     min_diversity = 0.50
 
     mser = cv2.MSER(delta, min_area, max_area, max_variation,
