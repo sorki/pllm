@@ -36,8 +36,8 @@ class Pllm(object):
         self.app = application
         self.ocr_enabled = True
 
-        self.dom_ident = 'f20'
-        f = '/var/lib/libvirt/images/Fedora-20-x86_64-netinst.iso'
+        self.dom_ident = 'f21'
+        f = '/var/lib/libvirt/images/Fedora-Server-netinst-x86_64-21.iso'
         self.dom_media_path = f
         self.libvirt_uri = config.get('libvirt_uri')
         self.storage_pool_name = config.get('storage_pool_name')

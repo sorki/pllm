@@ -178,7 +178,7 @@ def anaconda(dom):
     #dom.click()
 
     click_text(dom, 'continue')
-    if not wait_text(dom, 'installation summary', 5):
+    if not wait_text(dom, 'installation summary'):
         print('First click glitch present')
         click_text(dom, 'continue')
 
@@ -280,7 +280,7 @@ def firstboot(dom):
     wait_click(dom, 'firstboot_finish_btn')
 
 
-def f20(dom):
+def f21(dom):
     expect(dom, [
         ('grub', 'grub_autoboot_label', grub),
     ])
@@ -291,8 +291,8 @@ def f20(dom):
 
 try:
     while True:
-        print('f20')
-        f20(dom)
+        print('f21')
+        f21(dom)
         time.sleep(1)
 except KeyboardInterrupt:
     pass
