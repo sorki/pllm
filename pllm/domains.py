@@ -41,10 +41,7 @@ class Domain(object):
 
     def clickxy(self, x, y):
         self.mouse_move(x, y)
-        #self.mouse_drag(x, y)
-        self.mouse_press(1)
-        time.sleep(0.1)
-        # and again!
+        time.sleep(1)
         self.mouse_press(1)
 
     # composition with transport
