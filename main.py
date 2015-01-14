@@ -101,6 +101,18 @@ class Pllm(object):
         vnc_service = TCPClient("localhost", 5900, vnc_factory)
         vnc_service.setServiceParent(self.app)
 
+    @trace
+    def vnc_started(self, proto):
+        #proto.framebufferUpdateRequest()
+        self.vnc = proto
+        self.dom.transport = proto
+
+        self.vnc_loop = task.LoopingCall(proto.framebufferUpdateRequest)
+        self.vnc_loop.start(1.0)
+
+        self.schedule_save(proto, 0)
+
+
     def start_manhole(self):
         opts = {
             'ssh':    int(config.get('ssh_port')),
@@ -117,17 +129,6 @@ class Pllm(object):
 
     def emit(self, msg, data=None):
         self.mon.emit(msg, data)
-
-
-    @trace
-    def vnc_started(self, proto):
-        #proto.framebufferUpdateRequest()
-        self.vnc_loop = task.LoopingCall(proto.framebufferUpdateRequest)
-        self.vnc_loop.start(1.0)
-
-        self.schedule_save(proto, 0)
-        self.vnc = proto
-        self.dom.transport = proto
 
     @trace
     def store_ocr_results(self, ocr_res):
