@@ -111,7 +111,7 @@ def wait(dom, template, timeout_seconds=30):
     print('Waiting for target for {0} sec'.format(timeout_seconds))
     while True:
         if find(dom, template):
-            print('Wait target found after {:.2} sec'.format(
+            print('Wait target found after {0:.2f} sec'.format(
                 time.time() - start))
             return True
 
@@ -128,7 +128,7 @@ def wait_text(dom, text, timeout_seconds=30):
 
     while True:
         if text.lower() in dom.text.lower():
-            print('Wait target found after {:.2} sec'.format(
+            print('Wait target found after {0:.2f} sec'.format(
                 time.time() - start))
             return True
 
@@ -138,7 +138,7 @@ def wait_text(dom, text, timeout_seconds=30):
             x, y, w, h = rect
 
             if text.lower() in ocrd.lower():
-                print('Wait target found at segment {0}x{1} after{:.2} sec'
+                print('Wait target found at segment {0}x{1} after{2:.2f} sec'
                       .format(x, y, time.time() - start))
                 return True
 
