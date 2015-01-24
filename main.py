@@ -9,8 +9,9 @@ from twisted.internet import task
 from twisted.internet import reactor, threads
 from twisted.internet.defer import Deferred
 
-from pllm import manhole, interpret, vision
+from pllm import manhole, interpret
 from pllm import backends, config, monitor, util
+from pllm.vision import process
 
 from pllm.vnc.vnc import VNCFactory
 
@@ -112,7 +113,6 @@ class Pllm(object):
 
         self.schedule_save(proto, 0)
 
-
     def start_manhole(self):
         opts = {
             'ssh':    int(config.get('ssh_port')),
@@ -154,8 +154,14 @@ class Pllm(object):
 
         fpath = os.path.join(screendir, "screen.png")
         cpath = os.path.join(self.work_dir, "last.png")
-        proto.save_screen(fpath)
-        proto.save_screen(cpath)
+
+        with self.dom.screen_lock:
+            proto.save_screen(fpath)
+            proto.save_screen(cpath)
+
+            self.dom.screen = proto.screen.copy()
+            self.dom.screen_id = counter
+            self.dom.screen_path = fpath
 
         self.emit('SCREEN_COUNTER', counter)
         self.emit('SCREEN_DIR', screendir)
@@ -163,12 +169,8 @@ class Pllm(object):
         self.emit('SCREEN_CURRENT', cpath)
 
         if self.ocr_enabled:
-            d = threads.deferToThread(vision.process, fpath)
+            d = threads.deferToThread(process.process, fpath)
             d.addCallback(self.store_ocr_results)
-
-        with self.dom.screen_lock:
-            self.dom.screen = proto.screen
-            self.dom.screen_id = counter
 
         self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
         reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)

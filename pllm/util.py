@@ -29,9 +29,12 @@ def destroy_libvirt_domain(domain):
         log.msg('Domain not running')
 
 
+def template_path(name):
+    return '{0}/{1}.png'.format(config.CONFIG['template_dir'], name)
+
+
 def load_img(name):
-    return cv2.imread('{0}/{1}.png'.format(
-                      config.CONFIG['template_dir'], name))
+    return cv2.imread(template_path(name))
 
 
 def encdata(data):
