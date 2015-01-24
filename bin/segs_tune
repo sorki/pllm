@@ -5,6 +5,42 @@ import sys
 import cv
 import cv2
 
+
+def segmentize(im):
+    iters = cv.GetTrackbarPos("erode_iter", "controls")
+    iters = max(1, iters)
+
+    diters = cv.GetTrackbarPos("dilate_iter", "controls")
+    diters = max(1, diters)
+
+    k1 = cv.GetTrackbarPos("eksize1", "controls")
+    k2 = cv.GetTrackbarPos("eksize2", "controls")
+
+    elem_type = cv2.MORPH_RECT
+    k = cv2.getStructuringElement(elem_type, (k1, k2))
+    im = cv2.erode(im, k, iterations=iters)
+    cv2.imshow('er', im)
+
+    k1 = cv.GetTrackbarPos("dksize1", "controls")
+    k2 = cv.GetTrackbarPos("dksize2", "controls")
+
+    k = cv2.getStructuringElement(elem_type, (k1, k2))
+    im = cv2.dilate(im, k, iterations=diters)
+    cv2.imshow('di', im)
+
+    cim = im.copy()
+    contours, hierarchy = cv2.findContours(
+        cim, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    cpre = img.copy()
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        y -= 4
+        cv2.rectangle(cpre, (x, y), (x + w, y + h), (0, 255, 0), 1)
+
+    return cpre
+
+
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print("Usage: segs_tune IMG_FILE")
@@ -15,7 +51,7 @@ if __name__ == '__main__':
     cv.CreateTrackbar("threshold", "controls", 230, 255, lambda x: x)
     cv.CreateTrackbar("erode_iter", "controls", 1, 20, lambda x: x)
     cv.CreateTrackbar("dilate_iter", "controls", 5, 20, lambda x: x)
-    cv.CreateTrackbar("eksize1", "controls", 3, 20, lambda x: x)
+    cv.CreateTrackbar("eksize1", "controls", 2, 20, lambda x: x)
     cv.CreateTrackbar("eksize2", "controls", 2, 20, lambda x: x)
 
     cv.CreateTrackbar("dksize1", "controls", 5, 40, lambda x: x)
@@ -26,49 +62,16 @@ if __name__ == '__main__':
     while True:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        vis = img.copy()
-
         threshold = cv.GetTrackbarPos("threshold", "controls")
         ret, thr = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
 
-        im = cv2.bitwise_not(thr)
+        inv = cv2.bitwise_not(thr)
 
-        iters = cv.GetTrackbarPos("erode_iter", "controls")
-        iters = max(1, iters)
-
-        diters = cv.GetTrackbarPos("dilate_iter", "controls")
-        diters = max(1, diters)
-
-        k1 = cv.GetTrackbarPos("eksize1", "controls")
-        k2 = cv.GetTrackbarPos("eksize2", "controls")
-
-        k = cv2.getStructuringElement(cv2.MORPH_RECT, (k1, k2))
-        im = cv2.erode(im, k, iterations=iters)
-
-        k1 = cv.GetTrackbarPos("dksize1", "controls")
-        k2 = cv.GetTrackbarPos("dksize2", "controls")
-
-        k = cv2.getStructuringElement(cv2.MORPH_RECT, (k1, k2))
-        im = cv2.dilate(im, k, iterations=diters)
-
-        cim = im.copy()
-        contours, hierarchy = cv2.findContours(
-            cim, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        cpre = img.copy()
-        for c in contours:
-            x, y, w, h = cv2.boundingRect(c)
-            y -= 4
-            cv2.rectangle(cpre, (x, y), (x + w, y + h), (0, 255, 0), 1)
-
-            #peri = cv2.arcLength(c, True)
-            #approx = cv2.approxPolyDP(c, 0.1 * peri, True)
-            #cv2.drawContours(cpre, [approx], 0, (0, 255, 0), 3)
-
-        #cv2.drawContours(cpre, contours, -1, (255, 255, 0), 3)
-
-        cv2.imshow('preview', im)
-        cv2.imshow('contours', cpre)
+        res = segmentize(thr)
+        res2 = segmentize(inv)
+        cv2.imshow('g', thr)
+        cv2.imshow('res1', res)
+        cv2.imshow('res2', res2)
 
         if 0xFF & cv2.waitKey(5) == 27:
             break
