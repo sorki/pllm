@@ -1,7 +1,8 @@
 import cv2
-
+import numpy as np
 
 # segs result: [(x, y, w, h), ..]
+
 
 def mser_segments(img, delta=3,
                   min_area=500, max_area=35000,
@@ -60,3 +61,20 @@ def ocr_optimize(img, upscale=5, threshold=160, blur_kernel_size=4):
     ret, img = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
 
     return img
+
+
+def kmeans_quantize(img, clusters=2):
+    """
+    Color quantization into number of clusters
+    """
+
+    Z = img.reshape((-1, 3))
+    Z = np.float32(Z)
+
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
+    ret, label, center = cv2.kmeans(
+        Z, clusters, criteria, 1, flags=cv2.KMEANS_RANDOM_CENTERS)
+
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    return res.reshape((img.shape))
