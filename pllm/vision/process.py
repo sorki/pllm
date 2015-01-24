@@ -7,7 +7,7 @@ from twisted.python import log
 
 import algo
 
-from pllm import config
+from pllm import config, util
 
 
 def ocr(fpath, block=True):
@@ -97,14 +97,21 @@ def process(fpath):
     return (full, segs_res)
 
 
-def template_match_paths(target_fpath, template_fpath):
+def template_match(target_fpath, template_name):
+    """
+    Match template_name image against target_fpath
+
+    Returns (match_succes:bool, x:int, y:int)
+
+    x, y pointing to center of the matched region
+    """
 
     target = cv2.imread(target_fpath)
-    template = cv2.imread(template_fpath)
+    template = cv2.imread(util.template_path(template_name))
     h, w, d = template.shape
 
     fdir, fname = os.path.split(target_fpath)
-    name = fname[:fname.rfind('.')]  # ext is .png
+    #name = fname[:fname.rfind('.')]  # ext is .png
 
     max_val, x, y = algo.template_match(target, template)
 
@@ -117,11 +124,10 @@ def template_match_paths(target_fpath, template_fpath):
 
     threshold = config.get('treshold')
     if max_val >= threshold:
-        log.msg("Template matched, max_val: {0:.2}".format(max_val))
-
         cv2.rectangle(target, (x - w / 2, y - h / 2), (x + w / 2, y + h / 2),
-                      (255, 0, 0), 1)
+                      (0, 255, 0), 1)
 
-        cv2.imwrite("{0}/{1}_template_match.png".format(fdir, name), target)
+        cv2.imwrite("{0}/{1}_template_match.png".format(fdir, template_name),
+                    target)
 
     return (max_val >= threshold, x, y)

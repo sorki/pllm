@@ -1,7 +1,6 @@
 import time
 
-from pllm import util
-from pllm.vision.process import template_match_paths
+from pllm.vision.process import template_match
 
 
 class screenlock(object):
@@ -36,13 +35,13 @@ class cachefind(object):
 
 @screenlock
 @cachefind
-def find(dom, template):
-    res, x, y = template_match_paths(dom.screen_path, util.template_path(template))
+def find(dom, template_name):
+    res, x, y = template_match(dom.screen_path, template_name)
     if res:
-        print('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('+{0}@{1} = {2}'.format(template_name, dom.screen_id, res))
         ret = True
     else:
-        print('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('-{0}@{1} = {2}'.format(template_name, dom.screen_id, res))
         ret = False
 
     return ret
@@ -50,13 +49,13 @@ def find(dom, template):
 
 @screenlock
 @cachefind
-def findxy(dom, template):
-    res, x, y = template_match_paths(dom.screen_path, util.template_path(template))
+def findxy(dom, template_name):
+    res, x, y = template_match(dom.screen_path, template_name)
     if res:
-        print('+{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('+{0}@{1} = {2}'.format(template_name, dom.screen_id, res))
         ret = True
     else:
-        print('-{0}@{1} = {2}'.format(template, dom.screen_id, res))
+        print('-{0}@{1} = {2}'.format(template_name, dom.screen_id, res))
         ret = False
 
     return (ret, x, y)
