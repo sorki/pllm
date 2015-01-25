@@ -5,7 +5,7 @@ import cv2
 from pllm import config, util
 from pllm.vision import algo
 from pllm.vision.util import draw_segments
-from pllm.vision.ocr import ocr, ocr_optimize
+from pllm.vision.ocr import ocr
 
 
 def segmentize(fpath):
@@ -33,16 +33,13 @@ def segmentize(fpath):
         roi = img[y:y + h, x:x + w]
         segname = "{0}/{1}_segment_{2}_{3}.png".format(fdir, name, x, y)
         cv2.imwrite(segname, roi)
-        opt = ocr_optimize(segname)
-        segs[opt] = (x, y, w, h)
+        segs[segname] = (x, y, w, h)
 
     return segs
 
 
 def process(fpath):
-    opt_fpath = ocr_optimize(fpath)
-
-    full = ocr(opt_fpath, block=False)
+    full = ocr(fpath, block=False)
 
     segs = segmentize(fpath)
     segs_res = {}

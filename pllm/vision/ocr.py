@@ -66,6 +66,8 @@ def ocr(fpath, block=True):
     Should contain single block of text (pre-segmented)
     """
 
+    fpath = ocr_optimize(fpath)
+
     if ts_native_available:
         fn = tesseract_native
     else:
