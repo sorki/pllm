@@ -121,7 +121,7 @@ def contours(im, bounding_box_x_adjust=4):
     return segs
 
 
-def contour_segments(im, invert=True, threshold=230,
+def contour_segments(im, invert=True, threshold=130,
                      erode_iters=1, erode_k1_size=2, erode_k2_size=2,
                      dilate_iters=5, dilate_k1_size=5, dilate_k2_size=2,
                      bounding_box_x_adjust=4):

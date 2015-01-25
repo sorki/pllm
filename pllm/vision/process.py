@@ -24,7 +24,21 @@ def segmentize(fpath):
 
     vis = img.copy()
     vis = draw_segments(vis, segments)
-    cv2.imwrite("{0}/{1}_mser.png".format(fdir, name), vis)
+    cv2.imwrite("{0}/mser.png".format(fdir), vis)
+
+    kmeans_img = algo.kmeans_quantize(img)
+    cv2.imwrite("{0}/kmeans.png".format(fdir), kmeans_img)
+
+    for inv in [True, False]:
+        contour_segments = algo.contour_segments(kmeans_img, invert=inv)
+        vis = img.copy()
+        vis = draw_segments(vis, contour_segments)
+
+        invn = ''
+        if inv:
+            invn = '_inv'
+
+        cv2.imwrite("{0}/csegs{1}.png".format(fdir, invn), vis)
 
     segs = {}
 
