@@ -78,3 +78,41 @@ def kmeans_quantize(img, clusters=2):
     center = np.uint8(center)
     res = center[label.flatten()]
     return res.reshape((img.shape))
+
+
+def erode(im, iters=1, k1_size=2, k2_size=2):
+    """
+    Erode image
+    """
+
+    elem_type = cv2.MORPH_RECT
+    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
+    return cv2.erode(im, k, iterations=iters)
+
+
+def dilate(im, iters=5, k1_size=5, k2_size=2):
+    """
+    Dilate image
+    """
+
+    elem_type = cv2.MORPH_RECT
+    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
+    return cv2.dilate(im, k, iterations=iters)
+
+
+def contour_segments(im, bounding_box_x_adjust=4):
+    """
+    Segmentize image using contour search
+    """
+
+    cim = im.copy()  # findContours alters src image
+    contours, hierarchy = cv2.findContours(
+        cim, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    segs = []
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        y -= bounding_box_x_adjust
+        segs.append((x, y, w, h))
+
+    return segs
