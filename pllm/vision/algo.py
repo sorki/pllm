@@ -100,9 +100,11 @@ def dilate(im, iters=5, k1_size=5, k2_size=2):
     return cv2.dilate(im, k, iterations=iters)
 
 
-def contour_segments(im, bounding_box_x_adjust=4):
+def contours(im, bounding_box_x_adjust=4):
     """
-    Segmentize image using contour search
+    Find contours and their bounding boxes
+
+    Returns list of found segments
     """
 
     cim = im.copy()  # findContours alters src image
@@ -113,6 +115,27 @@ def contour_segments(im, bounding_box_x_adjust=4):
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
         y -= bounding_box_x_adjust
+        y = max(1, y)
         segs.append((x, y, w, h))
 
     return segs
+
+
+def contour_segments(im, invert=True, threshold=230,
+                     erode_iters=1, erode_k1_size=2, erode_k2_size=2,
+                     dilate_iters=5, dilate_k1_size=5, dilate_k2_size=2,
+                     bounding_box_x_adjust=4):
+    """
+    Pre-process image using erosion/dilation and find
+    segments resembling text lines using contour search
+    """
+
+    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    ret, im = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
+
+    if invert:
+        im = cv2.bitwise_not(im)
+
+    im = erode(im, erode_iters, erode_k1_size, erode_k2_size)
+    im = dilate(im, dilate_iters, dilate_k1_size, dilate_k2_size)
+    return contours(im)

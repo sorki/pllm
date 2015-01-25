@@ -5,7 +5,7 @@ import sys
 import cv
 import cv2
 
-from pllm.vision.algo import erode, dilate, contour_segments
+from pllm.vision.algo import erode, dilate, contours
 from pllm.vision.util import draw_segments
 
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         im = dilate(im, diters, dilate_k1_size, dilate_k2_size)
         cv2.imshow('di', im)
 
-        segs = contour_segments(im)
+        segs = contours(im)
 
         res = img.copy()
         res = draw_segments(res, segs)
