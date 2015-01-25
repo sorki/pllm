@@ -8,6 +8,21 @@ from pllm.vision.util import draw_segments
 from pllm.vision.ocr import ocr
 
 
+def segment_filter(segments):
+    nsegs = []
+    for seg in segments:
+        x, y, w, h = seg
+        if w < 30 or h < 10:  # too small
+            continue
+
+        if h > 30:  # we do not really benefit from multiline segments
+            continue
+
+        nsegs.append(seg)
+
+    return nsegs
+
+
 def segmentize(fpath):
     """
     Read `fpath` image, find its segments
@@ -39,6 +54,9 @@ def segmentize(fpath):
             invn = '_inv'
 
         cv2.imwrite("{0}/csegs{1}.png".format(fdir, invn), vis)
+        segments.extend(contour_segments)
+
+    segments = segment_filter(segments)
 
     segs = {}
 
