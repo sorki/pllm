@@ -5,9 +5,9 @@ import cv2
 import tesseract
 from twisted.python import log
 
-import algo
-
 from pllm import config, util
+from pllm.vision import algo
+from pllm.vision.util import draw_segments
 
 
 def ocr(fpath, block=True):
@@ -63,19 +63,18 @@ def segmentize(fpath):
     segments = algo.mser_segments(img)
 
     vis = img.copy()
+    vis = draw_segments(vis, segments)
+    cv2.imwrite("{0}/{1}_mser.png".format(fdir, name), vis)
+
     segs = {}
 
     # save found segments
     for (x, y, w, h) in segments:
-        cv2.rectangle(vis, (x, y), (x + w, y + h), (0, 255, 0), 1)
-
         roi = img[y:y + h, x:x + w]
         segname = "{0}/{1}_segment_{2}_{3}.png".format(fdir, name, x, y)
         cv2.imwrite(segname, roi)
         opt = ocr_optimize(segname)
         segs[opt] = (x, y, w, h)
-
-    cv2.imwrite("{0}/{1}_mser.png".format(fdir, name), vis)
 
     return segs
 
