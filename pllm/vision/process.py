@@ -3,7 +3,6 @@ import os
 import cv
 import cv2
 import tesseract
-from twisted.python import log
 
 from pllm import config, util
 from pllm.vision import algo
