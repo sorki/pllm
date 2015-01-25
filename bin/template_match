@@ -1,0 +1,27 @@
+#!/usr/bin/python
+import sys
+import cv2
+
+from pllm.vision.algo import template_match
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print("Usage: template_match IMG TEMPLATE")
+        sys.exit(1)
+
+    img = cv2.imread(sys.argv[1])
+    template = cv2.imread(sys.argv[2])
+    h, w, d = template.shape
+
+    confidence, x, y = template_match(img, template)
+
+    print("Confidence {0:.2}".format(confidence))
+    print("Center {0}x{1}".format(x, y))
+
+    cv2.rectangle(img, (x - w / 2, y - h / 2), (x + w / 2, y + h / 2),
+                  (255, 0, 0), 2)
+
+    cv2.imshow('prev', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
