@@ -6,6 +6,9 @@ import sys
 import cv
 import cv2
 
+from pllm.vision.algo import mser_segments
+from pllm.vision.util import draw_segments
+
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print("Usage: mser_tune IMG_FILE")
@@ -20,26 +23,24 @@ if __name__ == '__main__':
     cv.CreateTrackbar("maxVariation", "controls", 10, 100, lambda x: x)
     cv.CreateTrackbar("minDiversity", "controls", 50, 100, lambda x: x)
 
-    img = cv2.imread(sys.argv[1])
+    im = cv2.imread(sys.argv[1])
 
     while True:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        vis = img.copy()
+        gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
         delta = cv.GetTrackbarPos("delta", "controls")
         min_area = cv.GetTrackbarPos("minArea", "controls")
         max_area = cv.GetTrackbarPos("maxArea", "controls")
         max_variation = cv.GetTrackbarPos("maxVariation", "controls") / 100.
         min_diversity = cv.GetTrackbarPos("minDiversity", "controls") / 100.
-        mser = cv2.MSER(delta, min_area, max_area, max_variation,
-                        min_diversity)
-        regions = mser.detect(gray, None)
-        hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
 
-        # visualize what mser found
-        cv2.polylines(vis, hulls, 1, (0, 255, 0))
+        segs = mser_segments(im, delta, min_area, max_area,
+                             max_variation, min_diversity)
 
-        cv2.imshow('preview', vis)
+        res = im.copy()
+        res = draw_segments(res, segs)
+
+        cv2.imshow('preview', res)
 
         if 0xFF & cv2.waitKey(5) == 27:
             break
