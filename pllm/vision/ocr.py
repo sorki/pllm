@@ -13,6 +13,12 @@ try:
 except ImportError:
     ts_native_available = False
 
+tesseract_opts = {
+    'tessedit_char_whitelist': ('0123456789'
+    + 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    + ',.:*!?-')
+}
+
 
 def tesseract_native(fpath, lang, block=True):
     """
@@ -26,6 +32,9 @@ def tesseract_native(fpath, lang, block=True):
         api.SetPageSegMode(tesseract.PSM_SINGLE_BLOCK)
     else:
         api.SetPageSegMode(tesseract.PSM_AUTO)
+
+    for opt, val in tesseract_opts.items():
+        api.SetVariable(opt, val)
 
     img = cv.LoadImage(fpath, iscolor=False)
     tesseract.SetCvImage(img, api)
@@ -51,6 +60,10 @@ def tesseract_fork(fpath, lang, block=True):
     # tesseract <in_file> stdout -l <lang> -psm <psm>
     cmd = ["/usr/bin/tesseract", fpath, "stdout", "-l",
            lang, "-psm", str(psm)]
+
+    for opt, val in tesseract_opts.items():
+        cmd.append("-c")
+        cmd.append("{0}={1}".format(opt, val))
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
