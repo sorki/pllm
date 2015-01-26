@@ -146,34 +146,42 @@ class Pllm(object):
 
     @trace
     def save_screen(self, proto, counter):
-        screendir = os.path.join(self.work_dir, str(counter))
-        if os.path.isdir(screendir):
-            shutil.rmtree(screendir)
+        screendir = os.path.join(self.work_dir,
+                                 '{0:03d}'.format(counter))
 
-        os.mkdir(screendir)
+        similar = process.similar(self.dom.screen, proto.screen)
+        if similar:
+            print('Similar images, skipping')
+            self.emit('SIMILAR')
+            reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter)
+        else:
+            if os.path.isdir(screendir):
+                shutil.rmtree(screendir)
 
-        fpath = os.path.join(screendir, "screen.png")
-        cpath = os.path.join(self.work_dir, "last.png")
+            os.mkdir(screendir)
 
-        with self.dom.screen_lock:
-            proto.save_screen(fpath)
-            proto.save_screen(cpath)
+            fpath = os.path.join(screendir, "screen.png")
+            cpath = os.path.join(self.work_dir, "last.png")
 
-            self.dom.screen = proto.screen.copy()
-            self.dom.screen_id = counter
-            self.dom.screen_path = fpath
+            with self.dom.screen_lock:
+                proto.save_screen(fpath)
+                proto.save_screen(cpath)
 
-        self.emit('SCREEN_COUNTER', counter)
-        self.emit('SCREEN_DIR', screendir)
-        self.emit('SCREEN_STORED', fpath)
-        self.emit('SCREEN_CURRENT', cpath)
+                self.dom.screen = proto.screen.copy()
+                self.dom.screen_id = counter
+                self.dom.screen_path = fpath
 
-        if self.ocr_enabled:
-            d = threads.deferToThread(process.process, fpath)
-            d.addCallback(self.store_ocr_results)
+            self.emit('SCREEN_COUNTER', counter)
+            self.emit('SCREEN_DIR', screendir)
+            self.emit('SCREEN_STORED', fpath)
+            self.emit('SCREEN_CURRENT', cpath)
 
-        self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
-        reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)
+            if self.ocr_enabled:
+                d = threads.deferToThread(process.process, fpath)
+                d.addCallback(self.store_ocr_results)
+
+            self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
+            reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)
 
     @trace
     def schedule_save(self, proto, counter):

@@ -85,6 +85,20 @@ def process(fpath):
     return (full, segs_res)
 
 
+def similar(a, b):
+    """
+    Return True if img `a` is the same as `b`
+    """
+
+    if a is None or b is None:
+        return False
+
+    if a.shape != b.shape:
+        return False
+
+    return not any(cv2.sumElems(cv2.absdiff(a, b)))
+
+
 def template_match(target_fpath, template_name):
     """
     Match template_name image against target_fpath
