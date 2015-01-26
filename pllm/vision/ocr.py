@@ -81,6 +81,9 @@ def ocr(fpath, block=True):
 
     fpath = ocr_optimize(fpath)
 
+    fdir, fname = os.path.split(fpath)
+    name = fname[:fname.rfind('.')]  # ext is .png
+
     if ts_native_available:
         fn = tesseract_native
     else:
@@ -88,6 +91,10 @@ def ocr(fpath, block=True):
 
     lang = "eng"
     txt = fn(fpath, lang, block)
+
+    fname_txt = "{0}/{1}.txt".format(fdir, name)
+    with open(fname_txt, "w") as ftxt:
+        ftxt.write(txt)
 
     return txt
 
