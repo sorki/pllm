@@ -63,6 +63,60 @@ def ocr_optimize(img, upscale=5, threshold=160, blur_kernel_size=4):
     return img
 
 
+def adaptive_optimize(img, upscale=5, threshold=200, blur=1):
+    """
+    Optimize image for further OCR processing
+
+    - upscale
+    - convert to gray
+    - blur
+    - adaptive threshold
+    """
+
+    img = cv2.resize(img, None, fx=upscale, fy=upscale,
+                     interpolation=cv2.INTER_CUBIC)
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.medianBlur(img, blur)
+    img = cv2.adaptiveThreshold(img, threshold,
+                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY, 11, 2)
+
+    return img
+
+
+def sobel_optimize(img, upscale=5, median_blur=1, color_offset=200):
+    """
+    Optimize image for OCR processing using Sobel operator
+
+    Unused for now
+    """
+
+    img = cv2.resize(img, None, fx=upscale, fy=upscale,
+                     interpolation=cv2.INTER_CUBIC)
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    ddepth = cv2.CV_16S
+    delta = 0
+    scale = 1
+
+    grad_x = cv2.Sobel(gray, ddepth, 1, 0, ksize=3,
+                       scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+    grad_y = cv2.Sobel(gray, ddepth, 0, 1, ksize=3,
+                       scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+
+    abs_grad_x = cv2.convertScaleAbs(grad_x)
+    abs_grad_y = cv2.convertScaleAbs(grad_y)
+    im = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+
+    im = cv2.medianBlur(gray, median_blur)
+    im[im >= color_offset] = 255
+    im[im < color_offset] = 0  # black
+
+    return im
+
+
 def kmeans_quantize(img, clusters=2):
     """
     Color quantization into number of clusters
