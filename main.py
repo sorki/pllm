@@ -216,4 +216,4 @@ application = service.Application("PLLM")
 app = Pllm(application)
 # yield so logging and twistd stuff can be initialized
 reactor.callLater(0.1, app.main)
-reactor.addSystemEventTrigger('during', 'shutdown', app.stop)
+reactor.addSystemEventTrigger('before', 'shutdown', app.stop)
