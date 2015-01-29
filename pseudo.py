@@ -189,10 +189,11 @@ def anaconda(dom):
         if wait_text(dom, 'local standard disks'):
             break
 
+    wait_click_text(dom, 'I will configure partitioning')
     wait_click_text(dom, 'done')
-    wait_text(dom, 'installation options')
-    dom.key_press('alt-m')
-    wait_click_text(dom, 'continue')
+    #wait_text(dom, 'installation options')
+    #dom.key_press('alt-m')
+    #wait_click_text(dom, 'continue')
 
     def create_partition(mount, size):
         wait_text(dom, 'manual partitioning')
