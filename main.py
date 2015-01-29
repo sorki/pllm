@@ -34,6 +34,7 @@ class Pllm(object):
         self.dom = None
         self.mon = None
         self.manhole = None
+        self.vision = None
         self.app = application
         self.ocr_enabled = True
 
@@ -65,6 +66,12 @@ class Pllm(object):
         if self.state == 'VNC_INIT':
             if not self.vnc:
                 self.start_vnc()
+            else:
+                self.state = 'VISION_INIT'
+
+        if self.state == 'VISION_INIT':
+            if not self.vision:
+                self.start_vision()
             else:
                 self.state = 'MANHOLE_INIT'
 
@@ -112,6 +119,10 @@ class Pllm(object):
         self.vnc_loop.start(1.0)
 
         self.schedule_save(proto, 0)
+
+    @trace
+    def start_vision(self):
+        self.vision = process.VisionPipeline(domain=self.dom)
 
     def start_manhole(self):
         opts = {
@@ -177,8 +188,7 @@ class Pllm(object):
             self.emit('SCREEN_CURRENT', cpath)
 
             if self.ocr_enabled:
-                d = threads.deferToThread(process.process, fpath)
-                d.addCallback(self.store_ocr_results)
+                self.vision.process_screen(fpath)
 
             self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
             reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)

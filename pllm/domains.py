@@ -14,6 +14,7 @@ class Domain(object):
         self.screen_lock = threading.RLock()
         self.transport = None
 
+        self.result_lock =  threading.RLock()
         self.text = ''
         self.segments = []
 

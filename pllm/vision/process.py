@@ -1,4 +1,5 @@
 import os
+import multiprocessing
 
 import cv2
 
@@ -6,6 +7,46 @@ from pllm import config, util
 from pllm.vision import algo
 from pllm.vision.util import draw_segments
 from pllm.vision.ocr import ocr
+
+from txrdq.rdq import ResizableDispatchQueue
+
+
+class VisionPipeline(object):
+    def __init__(self, domain):
+        self.dom = domain
+        cpus = multiprocessing.cpu_count()
+        self.q = ResizableDispatchQueue(self._process_task, cpus)
+        self.start_priority = 1000
+
+    def _process_task(self, args):
+        fn, fpath = args
+        print("Processing:")
+        print(fn, fpath)
+        return fn(fpath)
+
+    def process_screen(self, screen_path):
+        with self.dom.screen_lock:
+            prio = self.start_priority - self.dom.screen_id
+
+            fn = process
+
+            task = self.q.put((fn, screen_path), prio)
+            task.addCallback(self.process_result)
+            task.addErrback(self.handle_failure)
+
+    def process_result(self, job):
+        with self.dom.screen_lock:
+            if self.dom.screen_id != self.start_priority - job.priority:
+                print('Got results for old screen')
+                return
+
+        full, segments = job.result
+        with self.dom.result_lock:
+            self.dom.text = full
+            self.dom.segments = segments
+
+    def handle_failure(self, err):
+        print(err.value.failure)
 
 
 def segment_filter(segments):
