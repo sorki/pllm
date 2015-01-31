@@ -37,7 +37,7 @@ class VisionPipeline(object):
     def process_result(self, job):
         with self.dom.screen_lock:
             if self.dom.screen_id != self.start_priority - job.priority:
-                print('Got results for old screen')
+                print('Got results for old screen id, discarding')
                 return
 
         full, segments = job.result
