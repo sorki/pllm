@@ -1,8 +1,183 @@
 import cv2
 import numpy as np
 
-# segs result: [(x, y, w, h), ..]
 
+def gray(img):
+    """
+    Convert `img` to grayscale
+    """
+
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+def upscale(img, factor=5):
+    """
+    Upscale `img` by `factor`.
+    """
+
+    return cv2.resize(img, None, fx=factor, fy=factor,
+                      interpolation=cv2.INTER_CUBIC)
+
+
+def blur(img, kernel_size=4):
+    """
+    Blur `img` using `kernel_size`
+    """
+
+    return cv2.blur(img, (kernel_size, kernel_size))
+
+
+def median_blur(img, kernel_size=1):
+    """
+    Median blur `img` using `kernel_size`
+    """
+
+    return cv2.medianBlur(img, kernel_size)
+
+
+def threshold(img, threshold=160):
+    """
+    Perform binary thresholding on `img` with `threshold`
+    """
+
+    ret, img = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
+    return img
+
+
+def adaptive_threshold(img, threshold=200):
+    """
+    Perform adaptive thresholding on `img` with `threshold`
+    """
+
+    return cv2.adaptiveThreshold(img, threshold,
+                                 cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                 cv2.THRESH_BINARY, 11, 2)
+
+
+def invert(img):
+    """
+    Invert binary image
+    """
+
+    return cv2.bitwise_not(img)
+
+
+def mser(img, delta=3,
+         min_area=500, max_area=35000,
+         max_variation=0.1, min_diversity=0.5):
+    """
+    Find image segments using MSER (Maximally stable extremal regions)
+    algorithm.
+
+    Returns list of (x, y, w, h) tuples of detected segments.
+    """
+
+    mser = cv2.MSER(delta, min_area, max_area, max_variation,
+                    min_diversity)
+
+    regions = mser.detect(img)
+
+    hulls = [cv2.convexHull(p.reshape(-1, 1, 2)) for p in regions]
+
+    segs = []
+    for s in hulls:
+        x, y, w, h = cv2.boundingRect(s)
+        segs.append((x, y, w, h))
+
+    return segs
+
+
+def kmeans_quantize(img, clusters=2):
+    """
+    Color quantization into number of clusters
+    """
+
+    Z = img.reshape((-1, 3))
+    Z = np.float32(Z)
+
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
+    ret, label, center = cv2.kmeans(
+        Z, clusters, criteria, 1, flags=cv2.KMEANS_RANDOM_CENTERS)
+
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    return res.reshape((img.shape))
+
+
+def erode(im, iters=1, k1_size=2, k2_size=2):
+    """
+    Erode image
+    """
+
+    elem_type = cv2.MORPH_RECT
+    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
+    return cv2.erode(im, k, iterations=iters)
+
+
+def dilate(im, iters=5, k1_size=5, k2_size=2):
+    """
+    Dilate image
+    """
+
+    elem_type = cv2.MORPH_RECT
+    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
+    return cv2.dilate(im, k, iterations=iters)
+
+
+def contours(im, bounding_box_x_adjust=4):
+    """
+    Find contours and their bounding boxes
+
+    Returns list of found segments
+    """
+
+    cim = im.copy()  # findContours alters src image
+    contours, hierarchy = cv2.findContours(
+        cim, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    segs = []
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        y -= bounding_box_x_adjust
+        y = max(1, y)
+        segs.append((x, y, w, h))
+
+    return segs
+
+
+def same(a, b):
+    """
+    Return True if img `a` is the same as `b`
+    """
+
+    if a is None or b is None:
+        return False
+
+    if a.shape != b.shape:
+        return False
+
+    return not any(cv2.sumElems(cv2.absdiff(a, b)))
+
+
+def similar(a, b, max_differ=200):
+    """
+    Return True if img `a` differs from `b`
+    only in `max_differ` pixels
+    """
+
+    if a is None or b is None:
+        return False
+
+    if a.shape != b.shape:
+        return False
+
+    cc = cv2.compare(gray(a), gray(b), cv2.CMP_NE)
+    diff = cv2.countNonZero(cc)
+    print("Differs {0}".format(diff))
+    return  diff < max_differ
+
+
+# COMPOSED
 
 def mser_segments(img, delta=3,
                   min_area=500, max_area=35000,
@@ -63,7 +238,7 @@ def ocr_optimize(img, upscale=5, threshold=160, blur_kernel_size=4):
     return img
 
 
-def adaptive_optimize(img, upscale=5, threshold=200, blur=1):
+def ocr_optimize_adaptive(img, upscale=5, blur=1):
     """
     Optimize image for further OCR processing
 
@@ -77,8 +252,9 @@ def adaptive_optimize(img, upscale=5, threshold=200, blur=1):
                      interpolation=cv2.INTER_CUBIC)
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.bitwise_not(img)
     img = cv2.medianBlur(img, blur)
-    img = cv2.adaptiveThreshold(img, threshold,
+    img = cv2.adaptiveThreshold(img, 255,
                                 cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                 cv2.THRESH_BINARY, 11, 2)
 
@@ -115,64 +291,6 @@ def sobel_optimize(img, upscale=5, median_blur=1, color_offset=200):
     im[im < color_offset] = 0  # black
 
     return im
-
-
-def kmeans_quantize(img, clusters=2):
-    """
-    Color quantization into number of clusters
-    """
-
-    Z = img.reshape((-1, 3))
-    Z = np.float32(Z)
-
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
-    ret, label, center = cv2.kmeans(
-        Z, clusters, criteria, 1, flags=cv2.KMEANS_RANDOM_CENTERS)
-
-    center = np.uint8(center)
-    res = center[label.flatten()]
-    return res.reshape((img.shape))
-
-
-def erode(im, iters=1, k1_size=2, k2_size=2):
-    """
-    Erode image
-    """
-
-    elem_type = cv2.MORPH_RECT
-    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
-    return cv2.erode(im, k, iterations=iters)
-
-
-def dilate(im, iters=5, k1_size=5, k2_size=2):
-    """
-    Dilate image
-    """
-
-    elem_type = cv2.MORPH_RECT
-    k = cv2.getStructuringElement(elem_type, (k1_size, k2_size))
-    return cv2.dilate(im, k, iterations=iters)
-
-
-def contours(im, bounding_box_x_adjust=4):
-    """
-    Find contours and their bounding boxes
-
-    Returns list of found segments
-    """
-
-    cim = im.copy()  # findContours alters src image
-    contours, hierarchy = cv2.findContours(
-        cim, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    segs = []
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        y -= bounding_box_x_adjust
-        y = max(1, y)
-        segs.append((x, y, w, h))
-
-    return segs
 
 
 def contour_segments(im, invert=True, threshold=130,

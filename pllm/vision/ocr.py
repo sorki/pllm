@@ -16,9 +16,9 @@ except ImportError:
 tesseract_opts = {
     'tessedit_char_whitelist': ('0123456789'
     + 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    + ',.:*!?-'),
-    'language_model_penalty_non_freq_dict_word': 0.5,
-    'language_model_penalty_non_dict_word': 0.25,
+    + ',.:*!?-=/'),
+    'language_model_penalty_non_freq_dict_word': '0.5',
+    'language_model_penalty_non_dict_word': '0.25',
 }
 
 
@@ -77,11 +77,29 @@ def tesseract_fork(fpath, lang, block=True):
 
 def ocr(fpath, block=True):
     """
+    Optimize & ocr fpath
+    """
+
+    result = ""
+    for opt_fpath in ocr_optimize(fpath):
+        res = ocr_single(opt_fpath, block)
+
+        if not res:
+            continue
+
+        if res in result:  # already got this
+            continue
+
+        result += " {0}".format(res)
+
+    return result.strip()
+
+
+def ocr_single(fpath, block=True):
+    """
     Recognize text in image specified by `fpath`.
     Should contain single block of text (pre-segmented)
     """
-
-    fpath = ocr_optimize(fpath)
 
     fdir, fname = os.path.split(fpath)
     name = fname[:fname.rfind('.')]  # ext is .png
@@ -101,7 +119,10 @@ def ocr(fpath, block=True):
     return txt
 
 
-def ocr_optimize(fpath, upscale=5, threshold=160):
+OPTIMIZE_ALGO = ["ocr_optimize"]
+
+
+def ocr_optimize(fpath):
     """
     Optimize `fpath` image for ocr
     """
@@ -110,9 +131,18 @@ def ocr_optimize(fpath, upscale=5, threshold=160):
     name = fname[:fname.rfind('.')]  # ext is .png
 
     img = cv2.imread(fpath)
-    res = algo.ocr_optimize(img)
 
-    optname = "{0}/{1}_ocropt.png".format(fdir, name)
+    results = []
 
-    cv2.imwrite(optname, res)
-    return optname
+    for algo_name in OPTIMIZE_ALGO:
+        fn = getattr(algo, algo_name)
+
+        res = fn(img)
+
+        optname = "{0}/{1}_{2}.png".format(fdir, name, algo_name)
+
+        cv2.imwrite(optname, res)
+
+        results.append(optname)
+
+    return results

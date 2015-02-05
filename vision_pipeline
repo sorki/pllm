@@ -1,0 +1,13 @@
+#!/usr/bin/python
+
+from twisted.internet import reactor, protocol
+
+from pllm import config
+from pllm.vision.protocol import VisionServerFactory
+
+port = config.get("vision_pipe_port")
+factory = VisionServerFactory()
+print("Listening on port {0}".format(port))
+
+reactor.listenTCP(port, factory)
+reactor.run()

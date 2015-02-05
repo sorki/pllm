@@ -14,9 +14,13 @@ class Domain(object):
         self.screen_lock = threading.RLock()
         self.transport = None
 
-        self.result_lock =  threading.RLock()
+        self.ocr_enabled = False
+        self.allow_outdated_results = False
+        self.similar_counter = 0
+
+        self.result_lock = threading.RLock()
         self.text = ''
-        self.segments = []
+        self.segments = {}
 
     def start(self):
         raise NotImplementedError

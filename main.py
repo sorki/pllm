@@ -8,17 +8,19 @@ from twisted.application.internet import TCPClient, TCPServer
 from twisted.internet import task
 from twisted.internet import reactor, threads
 from twisted.internet.defer import Deferred
+from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
 
 from pllm import manhole, interpret
 from pllm import backends, config, monitor, util
-from pllm.vision import process
+from pllm.vision import process, algo
+from pllm.vision.protocol import VisionClientProtocol
 
 from pllm.vnc.vnc import VNCFactory
 
 
 trace = util.trace
 
-CAP_DELAY = 1
+CAP_DELAY = 1.5
 
 
 class Pllm(object):
@@ -122,7 +124,15 @@ class Pllm(object):
 
     @trace
     def start_vision(self):
-        self.vision = process.VisionPipeline(domain=self.dom)
+        port = config.get("vision_pipe_port")
+        proto = VisionClientProtocol()
+        point = TCP4ClientEndpoint(reactor, "localhost", port)
+        d = connectProtocol(point, proto)
+        d.addCallback(self.vision_started)
+
+    @trace
+    def vision_started(self, protocol):
+        self.vision = protocol
 
     def start_manhole(self):
         opts = {
@@ -142,8 +152,35 @@ class Pllm(object):
         self.mon.emit(msg, data)
 
     @trace
-    def store_ocr_results(self, ocr_res):
-        full, segments = ocr_res
+    def store_ocr_full(self, result, ident):
+        log.msg('vis: full result for {0}'.format(ident))
+        with self.dom.screen_lock:
+            if self.dom.screen_id > ident:
+                if not self.dom.allow_outdated_results:
+                    log.msg('outdated, discarding')
+                    return
+
+            self.dom.text = result
+
+    @trace
+    def store_ocr_segments(self, result, ident):
+        log.msg('vis: segments result for {0}'.format(ident))
+        with self.dom.screen_lock:
+            if self.dom.screen_id > ident:
+                log.msg('outdated, discarding')
+                return
+
+            self.dom.segments = result
+
+    @trace
+    def store_ocr_results(self, result, ident):
+        log.msg('vis: got result for {0}'.format(ident))
+        with self.dom.screen_lock:
+            if self.dom.screen_id > ident:
+                log.msg('outdated, discarding')
+                return
+
+        full, segments = result
         log.msg('ocr: full page text length:{0}, segments:{1}'
                 .format(len(full), len(segments)))
 
@@ -153,19 +190,27 @@ class Pllm(object):
         self.emit('OCR_SEGMENTS', segments)
 
         self.dom.text = full
-        self.dom.segments = segments
 
-    @trace
+    #@trace
     def save_screen(self, proto, counter):
         screendir = os.path.join(self.work_dir,
                                  '{0:03d}'.format(counter))
 
-        similar = process.similar(self.dom.screen, proto.screen)
+        similar = algo.similar(self.dom.screen, proto.screen)
         if similar:
+            self.dom.similar_counter += 1
+            if self.dom.similar_counter >= 3:
+                if not self.dom.ocr_enabled:
+                    print('Re-enabling ocr')
+                    self.dom.ocr_enabled = True
+                    self.start_ocr_tasks()
+
             print('Similar images, skipping')
             self.emit('SIMILAR')
             reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter)
         else:
+            self.dom.similar_counter = 0
+
             if os.path.isdir(screendir):
                 shutil.rmtree(screendir)
 
@@ -182,18 +227,30 @@ class Pllm(object):
                 self.dom.screen_id = counter
                 self.dom.screen_path = fpath
 
+                if self.dom.ocr_enabled:
+                    self.start_ocr_tasks()
+
             self.emit('SCREEN_COUNTER', counter)
             self.emit('SCREEN_DIR', screendir)
             self.emit('SCREEN_STORED', fpath)
             self.emit('SCREEN_CURRENT', cpath)
 
-            if self.ocr_enabled:
-                self.vision.process_screen(fpath)
-
             self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
             reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)
 
-    @trace
+    def start_ocr_tasks(self):
+        fpath = self.dom.screen_path
+        counter = self.dom.screen_id
+
+        full_task = self.vision.process_task(
+            "ocr_full", counter, 0, [fpath])
+        full_task.addCallback(self.store_ocr_full, counter)
+
+        segments_task = self.vision.process_task(
+            "ocr_segments", counter, 0, [fpath])
+        segments_task.addCallback(self.store_ocr_segments, counter)
+
+    #@trace
     def schedule_save(self, proto, counter):
         self.emit('SCHEDULE_SAVE')
 
