@@ -1,6 +1,11 @@
 import time
 
-from pllm.vision.process import template_match
+from pllm.vision.tasks import template_match
+
+PASSWORD = "1337password_is_leet!!!"
+
+# useless
+TIMEOUT = 60000
 
 
 class screenlock(object):
@@ -91,22 +96,31 @@ def click(dom, template):
     time.sleep(0.5)
 
 
-def click_text(dom, text):
-    print('Looking for click target with text "{0}"'.format(text))
+def click_segment(dom, text, exact=False):
+    print('Looking for segment with text "{0}"'.format(text))
 
     for segname, data in dom.segments.items():
         rect, ocrd = data
         x, y, w, h = rect
 
-        if text.lower() in ocrd.lower():
+        found = False
+
+        if exact:
+            if text == ocrd:
+                found = True
+        else:
+            if text.lower() in ocrd.lower():
+                found = True
+
+        if found:
             print('Found target at {0}x{1}'.format(x, y))
             dom.clickxy(x + w / 2, y + h / 2)
-            return
+            return True
 
     print('Click target not found')
 
 
-def wait(dom, template, timeout_seconds=30):
+def wait(dom, template, timeout_seconds=TIMEOUT):
     start = time.time()
     print('Waiting for target for {0} sec'.format(timeout_seconds))
     while True:
@@ -122,7 +136,36 @@ def wait(dom, template, timeout_seconds=30):
             return False
 
 
-def wait_text(dom, text, timeout_seconds=30):
+def wait_segment(dom, text, exact=False, timeout_seconds=TIMEOUT):
+    start = time.time()
+    print('Waiting segment with text "{0}"'.format(text))
+
+    while True:
+        for segname, data in dom.segments.items():
+            rect, ocrd = data
+            x, y, w, h = rect
+            found = False
+
+            if exact:
+                if text == ocrd:
+                    found = True
+            else:
+                if text.lower() in ocrd.lower():
+                    found = True
+
+            if found:
+                print('Wait target found at segment {0}x{1} after {2:.2f} sec'
+                     .format(x, y, time.time() - start))
+                return True
+
+        time.sleep(0.1)
+
+        if time.time() > start + timeout_seconds:
+            print('!! Timeout on wait')
+            return False
+
+
+def wait_text(dom, text, timeout_seconds=TIMEOUT):
     start = time.time()
     print('Waiting for "{0}" text for {1} sec'.format(text, timeout_seconds))
 
@@ -149,14 +192,28 @@ def wait_text(dom, text, timeout_seconds=30):
             return False
 
 
+def wait_next(dom, timeout_seconds=TIMEOUT):
+    start = time.time()
+    print('Waiting for next screen for {0} sec'.format(timeout_seconds))
+    last = dom.screen_id
+    while last == dom.screen_id:
+        time.sleep(0.1)
+
+        if time.time() > start + timeout_seconds:
+            print('!! Timeout on wait_next')
+            return False
+
+    return True
+
+
 def wait_click(dom, template):
     wait(dom, template)
     click(dom, template)
 
 
-def wait_click_text(dom, text):
-    wait_text(dom, text)
-    click_text(dom, text)
+def wait_click_text(dom, text, exact=False):
+    wait_segment(dom, text, exact)
+    click_segment(dom, text, exact)
 
 
 def grub(dom):
@@ -168,19 +225,17 @@ def grub(dom):
 
     # disable gelocation so we don't start with random language
     dom.write(' geoloc=0')
-    time.sleep(2)  # screenshot
+    wait_next(dom)
     dom.key_press('ret')
 
 
 def anaconda(dom):
-    # first click glitch, but why?
-    dom.mouse_move(1, 1)
-    #dom.click()
+    dom.mouse_move(1,1)
 
-    click_text(dom, 'continue')
+    wait_click_text(dom, 'continue')
     if not wait_text(dom, 'installation summary'):
         print('First click glitch present')
-        click_text(dom, 'continue')
+        wait_click_text(dom, 'continue')
 
     wait_text(dom, 'installation summary')
 
@@ -191,15 +246,10 @@ def anaconda(dom):
 
     wait_click_text(dom, 'I will configure partitioning')
     wait_click_text(dom, 'done')
-    #wait_text(dom, 'installation options')
-    #dom.key_press('alt-m')
-    #wait_click_text(dom, 'continue')
 
     def create_partition(mount, size):
-        wait_text(dom, 'manual partitioning')
-
-        while not wait_text(dom, 'add a new mount point', 2):
-            wait_click(dom, 'anaconda_partitioning_plus_btn')
+        wait_click(dom, 'anaconda_partitioning_plus_btn')
+        wait_text(dom, 'add a new mount point')
 
         dom.write(mount)
         dom.key_press('right')
@@ -207,12 +257,12 @@ def anaconda(dom):
         dom.key_press('tab')
         dom.write(size)
 
-        while not wait_text(dom, 'manual partitioning', 2):
-            wait_click_text(dom, 'add mount point')
+        wait_click_text(dom, 'add mount point')
 
     create_partition('/', '5G')
-    create_partition('/boot', '100M')
-    create_partition('/home', '1G')
+    create_partition('/boot', '200M')
+    create_partition('swap', '1G')
+    create_partition('/home', '')
 
     wait_click_text(dom, 'done')
     wait_click_text(dom, 'accept changes')
@@ -222,30 +272,37 @@ def anaconda(dom):
     wait_click_text(dom, 'done')
     wait_click_text(dom, 'begin installation')
 
-    wait_click(dom, 'anaconda_rootpw_btn')
-    wait_text(dom, 'root password')
+    wait_click_text(dom, 'root password')
+    wait_segment(dom, 'done')
     for _ in [1, 2]:
-        for i in range(6):
-            dom.key_press(str(i))
+        dom.write(PASSWORD)
+        dom.key_press('tab')
 
-        dom.key_down('tab')
-
-    # password too simple, need to click two times
-    wait_click_text(dom, 'done')
     wait_click_text(dom, 'done')
 
     time.sleep(2)
     print(dom.text)
 
-    wait_click(dom, 'anaconda_user_creation_btn')
+    wait_click_text(dom, 'user creation')
+    wait_segment(dom, 'done')
+
+    dom.write('bob')
+
+    for _ in range(4):
+        dom.key_press('tab')
+        time.sleep(0.2)
+
+    for _ in [1, 2]:
+        dom.write(PASSWORD)
+        dom.key_press('tab')
+
     wait_click_text(dom, 'done')
 
-    time.sleep(2)
+    wait_next(dom)
     print(dom.text)
 
-    print('Waiting for installation to finish')
-    while True:
-        wait_click_text(dom, 'reboot')
+    print('Waiting for configuration to finish')
+    wait_click_text(dom, 'Reboot', exact=True)
 
     print('Waiting for domain to shutdown')
     while dom.is_running():
@@ -257,29 +314,6 @@ def anaconda(dom):
     print('Starting again')
     print dom.is_running()
     dom.start()
-
-
-def write(dom, text):
-    for letter in text:
-        dom.key_down(letter)
-
-
-def firstboot(dom):
-    wait_click(dom, 'firstboot_forward_btn')
-    wait_click(dom, 'firstboot_forward_btn')
-    wait_click(dom, 'firstboot_forward_btn')
-    wait(dom, 'firstboot_create_user_label')
-    write(dom, 'pllm framework')
-    dom.key_down('tab')
-    write(dom, 'pllm')
-    dom.key_down('tab')
-    dom.key_down('tab')
-    write(dom, 'a')
-    dom.key_down('tab')
-    write(dom, 'a')
-    wait_click(dom, 'firstboot_forward_btn')
-    wait_click(dom, 'firstboot_finish_btn')
-
 
 def f21(dom):
     expect(dom, [
