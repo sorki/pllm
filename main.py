@@ -123,7 +123,7 @@ class Pllm(object):
 
         self.vnc_loop = task.LoopingCall(proto.framebufferUpdateRequest)
         self.vnc_loop.start(5.0)
-        self.schedule_save(proto, 0)
+        self.schedule_save(proto)
 
     @trace
     def start_vision(self):
@@ -194,52 +194,53 @@ class Pllm(object):
 
         self.dom.text = full
 
-    #@trace
-    def save_screen(self, proto, counter):
-        screendir = os.path.join(self.work_dir,
-                                 '{0:03d}'.format(counter))
+    @trace
+    def save_screen(self, proto):
+        with self.dom.screen_lock:
+            similar = algo.similar(self.dom.screen, proto.screen)
+            if similar:
+                self.dom.similar_counter += 1
+                if self.dom.similar_counter >= 3:
+                    if not self.dom.ocr_enabled:
+                        print('Re-enabling ocr')
+                        self.dom.ocr_enabled = True
+                        self.start_ocr_tasks()
 
-        similar = algo.similar(self.dom.screen, proto.screen)
-        if similar:
-            self.dom.similar_counter += 1
-            if self.dom.similar_counter >= 3:
-                if not self.dom.ocr_enabled:
-                    print('Re-enabling ocr')
-                    self.dom.ocr_enabled = True
-                    self.start_ocr_tasks()
+                print('Similar images, skipping')
+                self.emit('SIMILAR')
+                reactor.callLater(CAP_DELAY, self.schedule_save, proto)
+            else:
+                self.dom.similar_counter = 0
 
-            print('Similar images, skipping')
-            self.emit('SIMILAR')
-            reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter)
-        else:
-            self.dom.similar_counter = 0
+                self.dom.screen = proto.screen.copy()
+                screendir = os.path.join(self.work_dir,
+                                         '{0:03d}'.format(self.dom.screen_id))
 
-            if os.path.isdir(screendir):
-                shutil.rmtree(screendir)
+                if os.path.isdir(screendir):
+                    shutil.rmtree(screendir)
 
-            os.mkdir(screendir)
+                os.mkdir(screendir)
 
-            fpath = os.path.join(screendir, "screen.png")
-            cpath = os.path.join(self.work_dir, "last.png")
+                fpath = os.path.join(screendir, "screen.png")
+                cpath = os.path.join(self.work_dir, "last.png")
 
-            with self.dom.screen_lock:
                 proto.save_screen(fpath)
                 proto.save_screen(cpath)
 
-                self.dom.screen = proto.screen.copy()
-                self.dom.screen_id = counter
+                self.dom.screen_id += 1
                 self.dom.screen_path = fpath
 
                 if self.dom.ocr_enabled:
                     self.start_ocr_tasks()
 
-            self.emit('SCREEN_COUNTER', counter)
-            self.emit('SCREEN_DIR', screendir)
-            self.emit('SCREEN_STORED', fpath)
-            self.emit('SCREEN_CURRENT', cpath)
+                self.emit('SCREEN_ID', self.dom.screen_id)
+                self.emit('SCREEN_DIR', screendir)
+                self.emit('SCREEN_STORED', fpath)
+                self.emit('SCREEN_CURRENT', cpath)
 
-            self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
-            reactor.callLater(CAP_DELAY, self.schedule_save, proto, counter + 1)
+                self.emit('SCHEDULE_SAVE_DELAY', CAP_DELAY)
+
+            reactor.callLater(CAP_DELAY, self.schedule_save, proto)
 
     def start_ocr_tasks(self):
         fpath = self.dom.screen_path
@@ -254,11 +255,11 @@ class Pllm(object):
         segments_task.addCallback(self.store_ocr_segments, counter)
 
     #@trace
-    def schedule_save(self, proto, counter):
+    def schedule_save(self, proto):
         self.emit('SCHEDULE_SAVE')
 
         proto.deferred = Deferred()
-        proto.deferred.addCallback(self.save_screen, counter)
+        proto.deferred.addCallback(self.save_screen)
 
     @trace
     def start_interpret(self):
