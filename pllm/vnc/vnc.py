@@ -4,7 +4,7 @@ import numpy as np
 from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
-from twisted.internet.protocol import ClientFactory
+from twisted.internet.protocol import ReconnectingClientFactory
 
 
 import rfb
@@ -128,7 +128,7 @@ class VNC(rfb.RFBClient):
         log.msg('VNC bell')
 
     def save_screen(self, fpath, screen=None):
-        log.msg('Saving {0}'.format(fpath))
+        #log.msg('Saving {0}'.format(fpath))
         if screen:
             cv2.imwrite(fpath, screen)
         else:
@@ -173,7 +173,7 @@ class VNC(rfb.RFBClient):
             reactor.callLater(1, d.callback, self)
 
 
-class VNCFactory(ClientFactory):
+class VNCFactory(ReconnectingClientFactory):
     """A factory for remote frame buffer connections."""
 
     protocol = VNC
@@ -182,9 +182,20 @@ class VNCFactory(ClientFactory):
         self.shared = shared
         self.deferred = Deferred()
         self.proto = None
+        self.connected_callback = None
+        self.disconnected_callback = None
 
     def clientConnectionMade(self, protocol):
         log.msg("VNC connection made")
         self.proto = protocol
         self.proto.framebufferUpdateRequest()
-        self.deferred.callback(self.proto)
+        if self.connected_callback:
+            self.connected_callback(protocol)
+
+    def clientConnectionLost(self, connector, reason):
+        log.msg('Lost VNC connection.  Reason: {0}'.format(reason))
+
+        if self.disconnected_callback:
+            self.disconnected_callback()
+
+        ReconnectingClientFactory.clientConnectionLost(self, connector, reason)

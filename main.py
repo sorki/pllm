@@ -107,19 +107,22 @@ class Pllm(object):
 
     def start_vnc(self):
         vnc_factory = VNCFactory()
-        vnc_factory.deferred.addCallback(self.vnc_started)
+        vnc_factory.connected_callback = self.vnc_started
+        vnc_factory.disconnected_callback = self.vnc_stopped
         vnc_service = TCPClient("localhost", 5900, vnc_factory)
         vnc_service.setServiceParent(self.app)
 
     @trace
+    def vnc_stopped(self):
+        self.vnc_loop.stop()
+
+    @trace
     def vnc_started(self, proto):
-        #proto.framebufferUpdateRequest()
         self.vnc = proto
         self.dom.transport = proto
 
         self.vnc_loop = task.LoopingCall(proto.framebufferUpdateRequest)
-        self.vnc_loop.start(1.0)
-
+        self.vnc_loop.start(5.0)
         self.schedule_save(proto, 0)
 
     @trace
