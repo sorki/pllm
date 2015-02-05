@@ -37,6 +37,8 @@ def load():
                 value = int(value)
             elif value.replace('.', '').isdigit():
                 value = float(value)
+            elif '~' in value:
+                value = os.path.expanduser(value)
 
             result[option.lower()] = value
 
