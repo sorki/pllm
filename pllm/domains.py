@@ -39,17 +39,13 @@ class Domain(object):
     def write(self, keys):
         for key in keys:
             self.key_press(key)
-            time.sleep(0.1)
+            time.sleep(0.2)
 
     def click(self):
-        self.mouse_press(1)
-        time.sleep(0.1)
-        # and again!
         self.mouse_press(1)
 
     def clickxy(self, x, y):
         self.mouse_move(x, y)
-        time.sleep(1)
         self.mouse_press(1)
 
     # composition with transport
