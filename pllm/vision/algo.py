@@ -173,7 +173,7 @@ def similar(a, b, max_differ=200):
 
     cc = cv2.compare(gray(a), gray(b), cv2.CMP_NE)
     diff = cv2.countNonZero(cc)
-    print("Differs {0}".format(diff))
+    #print("Differs {0}".format(diff))
     return  diff < max_differ
 
 

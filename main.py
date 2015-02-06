@@ -155,7 +155,7 @@ class Pllm(object):
     def emit(self, msg, data=None):
         self.mon.emit(msg, data)
 
-    @trace
+    #@trace
     def store_ocr_full(self, result, ident):
         log.msg('vis: full result for {0}'.format(ident))
         with self.dom.screen_lock:
@@ -166,7 +166,7 @@ class Pllm(object):
 
             self.dom.text = result
 
-    @trace
+    #@trace
     def store_ocr_segments(self, result, ident):
         log.msg('vis: segments result for {0}'.format(ident))
         with self.dom.screen_lock:
@@ -195,7 +195,7 @@ class Pllm(object):
 
         self.dom.text = full
 
-    @trace
+    #@trace
     def save_screen(self, proto):
         with self.dom.screen_lock:
             similar = algo.similar(self.dom.screen, proto.screen)
@@ -207,10 +207,11 @@ class Pllm(object):
                         self.dom.ocr_enabled = True
                         self.start_ocr_tasks()
 
-                print('Similar images, skipping')
+                #print('Similar images, skipping')
                 self.emit('SIMILAR')
                 reactor.callLater(CAP_DELAY, self.schedule_save, proto)
             else:
+                log.msg("Screen #{0}".format(self.dom.screen_id + 1))
                 self.dom.similar_counter = 0
 
                 self.dom.screen = proto.screen.copy()
