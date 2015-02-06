@@ -376,6 +376,15 @@ def gnome_initial_setup(dom):
     wait_click_text(dom, "start using fedora")
 
 
+def getting_started(dom):
+    wait_click(dom, 'shell_close_btn')
+    wait_click_text("activities")
+    dom.write("terminal")
+    dom.key_press('ret')
+    wait_next(dom)
+    dom.write("hello world")
+
+
 def f21(dom):
     expect(dom, [
         #('grub', 'grub_autoboot_label', grub),
@@ -387,6 +396,7 @@ def f21(dom):
         ('anaconda', 'installation', anaconda),
         ('live_selector', 'install to hard drive', live_selector),
         ('gnome-initial-setup', 'Gnome-initial-setup', gnome_initial_setup),
+        ('getting_started', 'Getting Started', getting_started),
     ])
 
 try:
