@@ -95,7 +95,7 @@ def kmeans_quantize(img, clusters=2):
     Z = img.reshape((-1, 3))
     Z = np.float32(Z)
 
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 20, 1)
     ret, label, center = cv2.kmeans(
         Z, clusters, criteria, 1, flags=cv2.KMEANS_RANDOM_CENTERS)
 
