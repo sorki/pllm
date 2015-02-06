@@ -335,9 +335,9 @@ def anaconda(dom):
         shall_quit_shell = True
 
     if shall_quit_shell:
-        wait_click(dom, 'shell_power_button')
-        wait_click(dom, 'shell_power_button_2')
-        wait_click(dom, 'shell_restart_button')
+        wait_click(dom, 'shell_power_btn')
+        wait_click(dom, 'shell_power_btn_2')
+        wait_click(dom, 'shell_restart_btn')
 
     print('Waiting for domain to shutdown')
     while dom.is_running():
