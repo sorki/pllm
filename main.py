@@ -230,6 +230,9 @@ class Pllm(object):
                 self.dom.screen_id += 1
                 self.dom.screen_path = fpath
 
+                self.dom.text = ""
+                self.dom.segments = {}
+
                 if self.dom.ocr_enabled:
                     self.start_ocr_tasks()
 
