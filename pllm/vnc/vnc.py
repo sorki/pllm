@@ -68,8 +68,6 @@ class VNC(rfb.RFBClient):
         self.pointerEvent(self.x, self.y, buttonmask=buttons)
         self.pointerEvent(self.x, self.y, buttonmask=self.buttons)
 
-        self.framebufferUpdateRequest()
-
         return self
 
     def mouse_down(self, button):
