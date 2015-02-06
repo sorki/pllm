@@ -23,8 +23,7 @@ def ocr_segments(fpath):
         x, y, w, h = shape
         seg_ocr = ocr(segname)
         if seg_ocr:
-            segs_res[segname] = (shape, seg_ocr)
-
+            segs_res[seg_ocr] = (shape, segname)
 
     return segs_res
 
