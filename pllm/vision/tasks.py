@@ -1,4 +1,6 @@
 import os
+from operator import itemgetter
+
 import cv2
 
 from pllm import config, util
@@ -60,6 +62,18 @@ def segmentize(fpath):
         segments.extend(contour_segments)
 
     segments = segment_filter(segments)
+    vis = img.copy()
+    vis = draw_segments(vis, segments)
+    cv2.imwrite("{0}/filtered_segments.png".format(fdir), vis)
+
+    merged_segments = add_merged_close_segments(segments)
+
+    if merged_segments:
+        vis = img.copy()
+        vis = draw_segments(vis, merged_segments)
+        cv2.imwrite("{0}/merged_segments.png".format(fdir), vis)
+
+        segments.extend(merged_segments)
 
     segs = {}
 
@@ -84,6 +98,73 @@ def segment_filter(segments):
             continue
 
         nsegs.append(seg)
+
+    return nsegs
+
+
+def add_merged_close_segments(segments,
+                              near_x=10,
+                              near_y=10,
+                              grow=2):
+
+    dbg_segments = False
+
+    nsegs = []
+    segs_len = len(segments)
+    y_sorted = sorted(segments, key=itemgetter(1))
+
+    for i, seg in enumerate(y_sorted):
+        x, y, w, h = seg
+        low = i - 1
+
+        while low >= 0:
+            ny = y_sorted[low][1]
+            if y - ny > near_y:
+                if dbg_segments:
+                    print(y_sorted[low], low, "is too far low by ", y - ny)
+                break
+
+            if dbg_segments:
+                print(y_sorted[low], low, "is near low by ", y - ny)
+            low -= 1
+
+        high = i + 1
+
+        while high < segs_len:
+            ny = y_sorted[high][1]
+            if ny - y > near_y:
+                if dbg_segments:
+                    print(y_sorted[high], high, "is too far highigh by ", ny - y)
+                break
+
+            if dbg_segments:
+                print(y_sorted[high], high, "is near highigh by ", ny - y)
+            high += 1
+
+        if low == i - 1 and high == i + 1:  # no change
+            continue
+
+        if dbg_segments:
+            print(seg, "Candidates", y_sorted[low + 1:high])
+
+        for candidate in sorted(y_sorted[low + 1:high]):
+            cx, cy, cw, ch = candidate
+            if candidate == seg:
+                continue
+
+            xw = x + w  # right edge
+            if abs(xw - cx) < near_x:
+                if dbg_segments:
+                    print(candidate, "edge near x", xw - cx)
+                new_x = min(x, cx) - grow
+                new_y = min(y, cy) - grow
+                new_w = (max(x + w, cx + cw) - new_x) + grow
+                new_h = (max(y + h, cy + ch) - new_y) + grow
+                new = (new_x, new_y, new_w, new_h)
+                nsegs.append(new)
+
+    if dbg_segments:
+        print("found", len(nsegs), nsegs)
 
     return nsegs
 
