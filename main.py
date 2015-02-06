@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os
 import shutil
+import collections
 
 from twisted.python import log
 from twisted.application import service
@@ -173,7 +174,7 @@ class Pllm(object):
                 log.msg('outdated, discarding')
                 return
 
-            self.dom.segments = result
+            self.dom.segments = collections.OrderedDict(sorted(result.items()))
 
     @trace
     def store_ocr_results(self, result, ident):
