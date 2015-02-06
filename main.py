@@ -174,7 +174,8 @@ class Pllm(object):
                 log.msg('outdated, discarding')
                 return
 
-            self.dom.segments = collections.OrderedDict(sorted(result.items()))
+            self.dom.segments = collections.OrderedDict(
+                sorted(result.items(), key=lambda item: len(item[0])))
 
     @trace
     def store_ocr_results(self, result, ident):
