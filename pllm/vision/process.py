@@ -1,9 +1,5 @@
-import os
-import multiprocessing
+from twisted.internet import defer, task, threads
 
-from twisted.internet import reactor, defer, task, threads
-
-from pllm import config, util
 from pllm.vision import tasks
 
 
@@ -17,10 +13,26 @@ class Job(object):
         self.running = False
         self.d = defer.Deferred()
         self.result = None
+        self.max_retries = 2
 
     def run(self):
         fn = getattr(tasks, self.task_name)
-        result =  fn(*self.args)
+        tries = 0
+        while True:
+            try:
+                result = fn(*self.args)
+                break
+
+            except Exception, e:
+                if tries >= self.max_retries:
+                    import traceback
+                    traceback.print_exc()
+                    return self
+
+                print("Task failed, reason: {0}".format(e))
+                print("Retrying")
+                tries += 1
+
         self.result = result
         return self
 
@@ -55,7 +67,7 @@ class VisionPipeline(object):
                 continue
 
             self.running += 1
-            job.running =True
+            job.running = True
             print("Starting {0}".format(job))
             self.process_task(job)
             return
@@ -63,7 +75,10 @@ class VisionPipeline(object):
     def done(self, job):
         self.running -= 1
         print("Done {0}".format(job))
-        job.d.callback((job.task_name, job.ident, job.result))
+        if job.result is not None:
+            job.d.callback((job.task_name, job.ident, job.result))
+        else:
+            print("Task did not return any result")
 
     def process_task(self, job):
         d = threads.deferToThread(job.run)
@@ -77,18 +92,3 @@ class VisionPipeline(object):
 
     def run_task(self, fn, args):
         return fn(*args)
-
-
-def process(fpath):
-    full = ocr(fpath, block=False)
-
-    segs = segmentize(fpath)
-    segs_res = {}
-
-    for segname, shape in segs.items():
-        x, y, w, h = shape
-        seg_ocr = ocr(segname)
-        if seg_ocr:
-            segs_res[segname] = (shape, seg_ocr)
-
-    return (full, segs_res)
