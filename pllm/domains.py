@@ -14,7 +14,7 @@ class Domain(object):
         self.screen_lock = threading.RLock()
         self.transport = None
 
-        self.ocr_enabled = False
+        self.ocr_enabled = True
         self.allow_outdated_results = False
         self.similar_counter = 0
 
