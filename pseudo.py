@@ -250,7 +250,7 @@ def anaconda(dom):
 
     wait_text(dom, 'installation summary')
 
-    wait_click(dom, 'anaconda_storage_incomplete_btn')
+    wait_click_text(dom, 'installation destination')
 
     wait_text(dom, 'local standard disks')
 
@@ -291,7 +291,7 @@ def anaconda(dom):
     wait_click_text(dom, 'accept changes')
 
     def sw_selection():
-        wait_click(dom, 'anaconda_software_btn')
+        wait_click_text(dom, 'software selection')
         wait_click_text(dom, 'Fedora Workstation', exact=True)
         wait_click_text(dom, 'done')
 
@@ -398,8 +398,7 @@ def getting_started(dom):
     dom.key_press('ret')
     wait_next(dom)
     wait_text(dom, 'terminal')
-    dom.write("hello world")
-    print('Done here')
+    dom.write("uname -a")
 
 
 def terminal(dom):
@@ -428,7 +427,7 @@ def terminal(dom):
         dom.key_press('ret')
 
         wait_next(dom)
-        wait_text(dom, "root")
+        wait_text(dom, "Complete!")
 
         cmd("exit")
         cmd("will_segfault")
@@ -436,6 +435,7 @@ def terminal(dom):
         cmd("will_python_raise")
         cmd("will_python3_raise")
 
+    cmd('echo "___123___"')
     crash_something()
     #wait_next(dom)
     dom.write('gnome-abrt')
