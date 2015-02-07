@@ -3,10 +3,9 @@ import time
 from pllm.vision.tasks import template_match
 
 PASSWORD = "fedora"
-PASSWORD_SIMPLE = True
-
-# useless
 TIMEOUT = 60000
+
+# BOILERPLATE
 
 
 class screenlock(object):
@@ -224,6 +223,9 @@ def wait_click_text(dom, text, exact=False):
     click_segment(dom, text, exact)
 
 
+# PSEUDOCODE
+
+
 def grub(dom):
     dom.key_press('tab')
     # erase part of cmdline
@@ -430,14 +432,12 @@ def terminal(dom):
         wait_text(dom, "Complete!")
 
         cmd("exit")
-        cmd("will_segfault")
-        cmd("will_abort")
-        cmd("will_python_raise")
-        cmd("will_python3_raise")
+        cmd("sleep 5m &")
+        cmd("kill -11 %1")
+        wait_next(dom)
 
     cmd('echo "___123___"')
     crash_something()
-    #wait_next(dom)
     dom.write('gnome-abrt')
     dom.key_press('ret')
     wait_next(dom)
