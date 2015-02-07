@@ -40,6 +40,7 @@ class Pllm(object):
         self.vision = None
         self.app = application
         self.ocr_enabled = True
+        self.reuse_vm = not True
 
         self.dom_ident = 'f21'
         f = '/var/lib/libvirt/images/Fedora-Live-Workstation-x86_64-21-5.iso'
@@ -102,9 +103,15 @@ class Pllm(object):
         with open(xml) as f:
             xml = f.read()
 
-        lv.remove_test_vm(self.dom_ident)
-        self.dom = lv.create_test_vm(xml, self.dom_ident, self.dom_media_path)
-        self.dom.start()
+        if self.reuse_vm:
+            self.dom = lv.reuse_test_vm(self.dom_ident)
+            if not self.dom.is_running():
+                log.msg('Starting')
+                self.dom.start()
+        else:
+            lv.remove_test_vm(self.dom_ident)
+            self.dom = lv.create_test_vm(xml, self.dom_ident, self.dom_media_path)
+            self.dom.start()
 
     def start_vnc(self):
         vnc_factory = VNCFactory()

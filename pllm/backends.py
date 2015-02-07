@@ -226,3 +226,18 @@ class LibvirtBackend(object):
         newxml = etree.tostring(tree)
         lvdom = self.con.defineXML(newxml)
         return domains.LibvirtDomain(ident, lvdom)
+
+    def reuse_test_vm(self, ident):
+        '''
+        Reuse existing machine
+        '''
+
+        name = self.instance_name(ident)
+
+        try:
+            lvdom = self.con.lookupByName(name)
+            log.msg('Reusing existing domain')
+            return domains.LibvirtDomain(ident, lvdom)
+        except libvirt.libvirtError:
+            log.msg('Existing domain not found, recreating')
+            return self.create_test_vm(ident)
