@@ -28,7 +28,7 @@ class VNC(rfb.RFBClient):
         self.factory.clientConnectionMade(self)
 
     def _decode_key(self, key):
-        return [keys.KEYMAP.get(k) or ord(k) for k in key.split('-')]
+        return [keys.KEYMAP.get(k) or ord(k) for k in key.split('`')]
 
     def key_press(self, key):
         """ Send a key press to the server
