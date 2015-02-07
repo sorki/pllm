@@ -168,7 +168,7 @@ class VNC(rfb.RFBClient):
             # callback one second later so we catch all the changes
             # caused by our last action. If we callback instantly
             # we get in-transition screenshot which is not what we want
-            reactor.callLater(1, d.callback, self)
+            reactor.callLater(4, d.callback, self)
 
 
 class VNCFactory(ReconnectingClientFactory):

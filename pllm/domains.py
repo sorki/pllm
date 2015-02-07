@@ -66,18 +66,23 @@ class Domain(object):
 
     def key_down(self, key):
         self.trans('key_down', key)
+        time.sleep(0.1)
 
     def key_up(self, key):
         self.trans('key_up', key)
+        time.sleep(0.1)
 
     def mouse_press(self, button):
         self.trans('mouse_press', button)
+        time.sleep(0.1)
 
     def mouse_down(self, button):
         self.trans('mouse_down', button)
+        time.sleep(0.1)
 
     def mouse_up(self, button):
         self.trans('mouse_up', button)
+        time.sleep(0.1)
 
     def mouse_move(self, x, y):
         self.trans('mouse_move', x, y)
