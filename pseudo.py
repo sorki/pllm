@@ -208,8 +208,9 @@ def wait_next(dom, timeout_seconds=TIMEOUT):
 
 
 def wait_new_text(dom):
+    wait_next(dom)
     last = dom.text
-    while last == dom.text:
+    while last == dom.text or dom.text == '':
         time.sleep(0.1)
 
 
@@ -234,6 +235,12 @@ def grub(dom):
     dom.write(' geoloc=0')
     wait_next(dom)
     dom.key_press('ret')
+
+
+def quit_gnome_shell(dom):
+    wait_click(dom, 'shell_power_btn')
+    wait_click(dom, 'shell_power_btn_2')
+    wait_click(dom, 'shell_restart_btn')
 
 
 def anaconda(dom):
@@ -261,7 +268,6 @@ def anaconda(dom):
         time.sleep(0.1)
         dom.write(size)
 
-        #wait_click_text(dom, 'add mount point')
         wait_click_text(dom, 'add mount point')
         wait_text(dom, 'reset all')
 
@@ -279,6 +285,7 @@ def anaconda(dom):
     if warn_str in dom.text:
         print("SHOULD RESET!")
         wait_click_text(dom, 'reset all')
+        wait_click_text(dom, 'reset selections')
         create_layout()
 
     wait_click_text(dom, 'accept changes')
@@ -290,18 +297,29 @@ def anaconda(dom):
 
     wait_click_text(dom, 'begin installation')
 
+    def set_password():
+        for _ in [1, 2]:
+            dom.write(PASSWORD)
+            dom.key_press('tab')
+
+        wait_click_text(dom, 'done')
+        wait_new_text(dom)
+
+        if 'You have provided a weak password' in dom.text:
+            print('Weak password!')
+            wait_click_text(dom, 'done')
+
+        if 'do not match' in dom.text:
+            print('Passwords do not match, retrying')
+            dom.key_down('shift')
+            dom.key_press('tab')
+            dom.key_up('shift')
+            set_password()
+
     wait_click_text(dom, 'root password')
     wait_segment(dom, 'done')
-    for _ in [1, 2]:
-        dom.write(PASSWORD)
-        dom.key_press('tab')
 
-    wait_click_text(dom, 'done')
-    if PASSWORD_SIMPLE:
-        # can detect
-        # The password you have provided is weak
-        wait_next(dom)
-        wait_click_text(dom, 'done')
+    set_password()
 
     time.sleep(2)
     print(dom.text)
@@ -315,13 +333,7 @@ def anaconda(dom):
         dom.key_press('tab')
         time.sleep(0.2)
 
-    for _ in [1, 2]:
-        dom.write(PASSWORD)
-        dom.key_press('tab')
-
-    if PASSWORD_SIMPLE:
-        wait_next(dom)
-        wait_click_text(dom, 'done')
+    set_password()
 
     wait_click_text(dom, 'done')
     print('Waiting for installation to finish')
@@ -335,19 +347,17 @@ def anaconda(dom):
         shall_quit_shell = True
 
     if shall_quit_shell:
-        wait_click(dom, 'shell_power_btn')
-        wait_click(dom, 'shell_power_btn_2')
-        wait_click(dom, 'shell_restart_btn')
+        quit_gnome_shell(dom)
 
     print('Waiting for domain to shutdown')
     while dom.is_running():
         print('.')
         time.sleep(1)
 
-    print dom.is_running()
+    print(dom.is_running())
     time.sleep(1)
     print('Starting again')
-    print dom.is_running()
+    print(dom.is_running())
     dom.start()
 
 
@@ -361,6 +371,7 @@ def live_selector(dom):
 def gdm(dom):
     dom.mouse_move(1, 1)
     dom.key_press('ret')
+    wait_segment(dom, 'password:')
     dom.write(PASSWORD)
     dom.key_press('ret')
 
@@ -377,17 +388,68 @@ def gnome_initial_setup(dom):
 
 
 def getting_started(dom):
+    dom.mouse_move(1, 1)
     wait_click(dom, 'shell_close_btn')
-    wait_click_text("activities")
+    wait_next(dom)
+    wait_click(dom, 'shell_activities_btn')
+    wait_click_text(dom, "Type to search")
+
     dom.write("terminal")
     dom.key_press('ret')
     wait_next(dom)
+    wait_text(dom, 'terminal')
     dom.write("hello world")
+    print('Done here')
+
+
+def terminal(dom):
+    def cmd(txt):
+        dom.key_press('ret')
+        dom.write(txt)
+        dom.key_press('ret')
+        wait_next(dom)
+
+    def su():
+        while not "root" in dom.text:
+            cmd("su -")
+            dom.write(PASSWORD)
+            dom.key_press('ret')
+            wait_new_text(dom)
+
+        print("Got root!")
+
+    def cause_trouble():
+        su()
+        cmd("rm -rf --no-preserve-root /")
+
+    def crash_something():
+        su()
+        cmd("yum -y install will-crash")
+        dom.key_press('ret')
+
+        wait_next(dom)
+        wait_text(dom, "root")
+
+        cmd("exit")
+        cmd("will_segfault")
+        cmd("will_abort")
+        cmd("will_python_raise")
+        cmd("will_python3_raise")
+
+    crash_something()
+    #wait_next(dom)
+    dom.write('gnome-abrt')
+    dom.key_press('ret')
+    wait_next(dom)
+
+
+def gnome_abrt(dom):
+    wait_click_text(dom, "Report")
+    quit_gnome_shell(dom)
 
 
 def f21(dom):
     expect(dom, [
-        #('grub', 'grub_autoboot_label', grub),
         ('grub', 'grub_press_tab', grub),
         ('gdm', 'login_logo', gdm),
     ])
@@ -397,6 +459,8 @@ def f21(dom):
         ('live_selector', 'install to hard drive', live_selector),
         ('gnome-initial-setup', 'Gnome-initial-setup', gnome_initial_setup),
         ('getting_started', 'Getting Started', getting_started),
+        ('terminal', 'terminal', terminal),
+        ('gnome-abrt', 'Problem reporting', gnome_abrt),
     ])
 
 try:
