@@ -1,6 +1,13 @@
 [main]
-treshold = 0.9
 work_dir = /tmp/pllm/run
-template_dir = /home/rmarko/work/qa/pllm/img/
+monitor_port = 1666
+ssh_port = 1667
+vision_pipe_port = 1668
+
+[virt]
 libvirt_uri = qemu:///system
 storage_pool_name = lvm
+
+[vision]
+treshold = 0.9
+template_dir = /tmp/pllm/templates
