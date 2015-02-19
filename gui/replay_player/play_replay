@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+
+import os
+import sys
+
+from PyQt5.QtCore import pyqtSlot, QTimer
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QFileDialog
+from PyQt5.uic import loadUi
+
+
+class Player(QWidget):
+    def __init__(self, parent=None, *args):
+        super(Player, self).__init__(parent, *args)
+
+        loadUi('player.ui', self)
+
+        self.images = []
+        self.texts = [""]
+        self.c = 0
+        self.count = 0
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.tick)
+
+        self.path = None
+        self.fname = "screen"
+        self.fnames = ["screen", "mser", "kmeans", "csegs", "csegs_inv"]
+
+        for fn in self.fnames:
+            self.name_sel.addItem(fn)
+
+        self.playing = False
+
+    def tick(self):
+        self.on_next_clicked()
+
+    def update_position(self):
+        if not self.images:
+            return
+
+        self.position.setText("{0}/{1}".format(self.c + 1, self.count))
+        self.current_slider.setValue(self.c)
+
+        self.domtext.setPlainText(self.texts[self.c])
+        self.show_image()
+
+    def show_image(self):
+        self.image.setPixmap(self.images[self.c])
+        self.image.adjustSize()
+
+    def load_images(self):
+        if self.path is None:
+            return
+
+        self.images = []
+        self.texts = []
+        name = self.fname
+
+        for item in sorted(os.listdir(self.path)):
+            if ".png" in item:
+                continue
+
+            px = QPixmap.fromImage(QImage(os.path.join(self.path, item, name)))
+            self.images.append(px)
+            txtpath = os.path.join(self.path, item, "screen_ocr_optimize.txt")
+            if os.path.isfile(txtpath):
+                with open(txtpath) as f:
+                    txt = f.read()
+            else:
+                txt = ""
+
+            self.texts.append(txt)
+
+        if self.images:
+            self.c = 0
+            self.count = len(self.images)
+            self.current_slider.setMaximum(self.count - 1)
+            self.update_position()
+
+    @pyqtSlot()
+    def on_prev_clicked(self):
+        self.c = max(self.c - 1, 0)
+        self.update_position()
+
+    @pyqtSlot()
+    def on_next_clicked(self):
+        n = min(self.c + 1, self.count - 1)
+        if n == self.c and self.playing:
+            self.pause()
+            return
+
+        self.c = n
+        self.update_position()
+
+    def play(self):
+        self.playing = True
+        self.pp.setText("Pause")
+        self.timer.setInterval(1000 / self.fps.value())
+        self.timer.start()
+
+    def pause(self):
+        self.playing = False
+        self.pp.setText("Play")
+        self.timer.stop()
+
+    @pyqtSlot()
+    def on_pp_clicked(self):
+        if self.playing:
+            self.pause()
+        else:
+            self.play()
+
+    @pyqtSlot(int)
+    def on_fps_valueChanged(self, num):
+        if num == 0:
+            self.pause()
+            return
+
+        self.timer.setInterval(1000 / self.fps.value())
+
+    @pyqtSlot(int)
+    def on_current_slider_valueChanged(self, num):
+        self.c = num
+        self.update_position()
+
+    @pyqtSlot(str)
+    def on_name_sel_currentIndexChanged(self, txt):
+        self.fname = txt
+        stored = self.c
+        self.load_images()
+        self.c = stored
+        self.update_position()
+
+    @pyqtSlot(int)
+    def on_show_text_stateChanged(self):
+        self.domtext.setVisible(self.show_text.isChecked())
+
+
+class MainPlayer(QMainWindow):
+    def __init__(self, *args):
+        super(MainPlayer, self).__init__(*args)
+
+        loadUi('mainwindow.ui', self)
+
+        self.actionExit.triggered.connect(self.close)
+        self.actionOpen.triggered.connect(self.open)
+        self.actionOpenLast.triggered.connect(self.open_last)
+        self.widget = Player(self)
+        self.player = self.widget
+        self.player.domtext.setVisible(False)
+        self.setCentralWidget(self.widget)
+
+    def open(self):
+        path = QFileDialog.getExistingDirectory(
+            self, "Open replay directory")
+
+        if not path:
+            return
+
+        self.open_path(path)
+
+    def open_last(self):
+        self.open_path("/tmp/pllm/run/")
+
+    def open_path(self, path):
+        self.path = path
+        self.player.path = path
+        self.player.load_images()
+
+    def load_image(self, path):
+        image = QImage(path)
+        self.widget.image.setPixmap(QPixmap.fromImage(image))
+        self.widget.image.adjustSize()
+
+
+app = QApplication(sys.argv)
+widget = MainPlayer()
+widget.show()
+sys.exit(app.exec_())
